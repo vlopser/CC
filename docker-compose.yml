@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  hello-world:
+    build:
+      context: frontend_mocked/
+      dockerfile: Dockerfile
+    ports:
+      - "80"
+
+  oauth2-proxy:
+    ports:
+      - "4180:4180"
+    image: bitnami/oauth2-proxy:7.3.0
+    command:
+      - --http-address
+      - 0.0.0.0:4180 #localhost:4180
+    environment:
+      OAUTH2_PROXY_UPSTREAMS: "http://hello-world:80/"
+      OAUTH2_PROXY_CLIENT_ID: 936638621086-ukfhb28p7pkbjup42pgvjq4br9ce0h86.apps.googleusercontent.com
+      OAUTH2_PROXY_CLIENT_SECRET: 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
+      OAUTH2_PROXY_COOKIE_SECRET: _-vsNPgMZKXBRGWutZsIgeyB9Dzx-4aRNQwfX-zuDyo=
+      OAUTH2_PROXY_HTTPS_REDIRECT: "false"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_PROVIDER: "google"
+      OAUTH2_PROXY_REDIRECT_URL: "http://localhost:4180/oauth2/callback"
+    restart: always

@@ -1,1 +1,1 @@
-Lanza un Frontend de prueba en `localhost:8080` que únicamente muestra un mensaje.
+Lanza un Frontend de prueba en `localhost:80` que únicamente muestra un mensaje.

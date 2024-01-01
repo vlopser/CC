@@ -1,20 +1,22 @@
-Lnaza un servicio de [OAuth Proxy](/oauth2_proxy/) en `localhost:4180` que reenviará el tráfico a un [Frontend de prueba ](/frontend_mocked/)en `localhost:8080`.
+Lnaza un servicio de [OAuth Proxy](https://hub.docker.com/r/bitnami/oauth2-proxy) en `localhost:4180` que reenviará el tráfico a un [Frontend de prueba ](/frontend_mocked/) en `localhost:80` no accesible directamente desde internet.
 
 # Ejecución
 Para la ejecución únicamente situese en el directorio principal y ejecute
 
 ```shell
-make
+docker-compose up
 ```
-Automáticamente creará los dos contenedores Docker necesarios y eliminará cualquier rastro suyo previo.
+Automáticamente creará los dos contenedores Docker necesarios.
 
 Puede ejecutar también
 
 ```shell
-make remove
+docker-compose down
 ```
 para únicamente eliminar todo rastro de los contenedores creados.
 
 # Utilización
-Para usar el servicio, dirigase a `localhost:4180` e inicie sesión con Google. Automáticamente será redirigido a `localhost:8080`.
+Para usar el servicio, dirigase a `localhost:4180` e inicie sesión con Google. Automáticamente será redirigido al [Frontend de prueba ](/frontend_mocked/).
 
+# Referencias
+Visto en https://dev.to/lazypro/make-any-website-authenticated-a52.
