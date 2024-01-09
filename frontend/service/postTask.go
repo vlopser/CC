@@ -21,10 +21,6 @@ func checkGitRepo(url string) {
 	}
 }
 
-func GetResult(context *gin.Context) {
-	// tenemos que tomar los resultados desde un object store
-}
-
 func PostTask(context *gin.Context) {
 
 	// open connection to nats
@@ -44,8 +40,13 @@ func PostTask(context *gin.Context) {
 
 	checkGitRepo(requestBody.Url)
 
-	task := classes.NewTask(rand.Int(), requestBody.Url, requestBody.Parameters)
-	//natsUtils.Publish(conn, &task)
+	task := classes.Task{
+		IdTask:     rand.Int(),
+		RepoUrl:    requestBody.Url,
+		Parameters: requestBody.Parameters,
+		Status:     100,
+	}
+	natsUtils.Publish(conn, &task)
 
 	context.IndentedJSON(http.StatusCreated, task.IdTask)
 }

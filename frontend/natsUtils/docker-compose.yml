@@ -1,0 +1,9 @@
+version: '3'
+
+# only for test purposes
+services:
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"

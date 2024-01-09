@@ -9,7 +9,7 @@ import (
 
 func GetConnection() *nats.Conn {
 	// Connect to the NATS server
-	conn, err := nats.Connect("natsUtils://localhost:4222")
+	conn, err := nats.Connect("nats://localhost:4222")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,7 +22,7 @@ func Publish(conn *nats.Conn, task *classes.Task) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = conn.Publish("tasks", pkgJSON)
+	err = conn.Publish("putTask", pkgJSON)
 	if err != nil {
 		log.Fatal(err)
 	}
