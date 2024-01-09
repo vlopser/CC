@@ -9,7 +9,6 @@ WORKDIR /frontend
 #Copia el archivo index.html al servidor
 COPY main.go ./
 COPY classes/* classes
-COPY natsUtils/* natsUtils
 COPY service/* service
 
 #Instalamos las dependencias de la aplicación
