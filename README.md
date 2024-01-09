@@ -1,4 +1,4 @@
-Lnaza un servicio de [OAuth Proxy](https://hub.docker.com/r/bitnami/oauth2-proxy) en `localhost:4180` que reenviará el tráfico a un [Frontend de prueba ](/frontend_mocked/) en `localhost:80` no accesible directamente desde internet.
+Lanza un servicio de [OAuth Proxy](https://hub.docker.com/r/bitnami/oauth2-proxy) en `localhost:4180` que reenviará el tráfico a un [Frontend de prueba ](/frontend_mocked/) en `localhost:80` no accesible directamente desde internet.
 
 # Ejecución
 Para la ejecución únicamente situese en el directorio principal y ejecute

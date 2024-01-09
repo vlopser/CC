@@ -3,30 +3,10 @@
 package main
 
 import (
-	"ejemplo/clases"
-	"net/http"
-
+	"frontend/service"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
-
-var tareas = []clases.Tarea{}
-
-func getTarea(context *gin.Context) {
-	context.IndentedJSON(http.StatusOK, tareas)
-}
-
-func addTarea(context *gin.Context) {
-	var newTarea clases.Tarea
-
-	if err := context.BindJSON(&newTarea); err != nil {
-		return
-	}
-
-	tareas = append(tareas, newTarea)
-
-	context.IndentedJSON(http.StatusCreated, newTarea)
-}
 
 func main() {
 	//Creamos un servidor mediante el framework Gin
@@ -39,9 +19,9 @@ func main() {
 	router.Use(cors.New(config))
 
 	//Para obtener los datos
-	router.GET("/tareas", getTarea)
+	router.GET("/getResult", service.GetResult)
 	//Para agregar datos
-	router.POST("/tareas", addTarea)
+	router.POST("/createTask", service.PostTask)
 	//Ejecutar el servidor
 	router.Run(":80")
 }
