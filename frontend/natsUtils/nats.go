@@ -7,23 +7,15 @@ import (
 	"log"
 )
 
-func GetConnection() *nats.Conn {
-	// Connect to the NATS server
-	conn, err := nats.Connect("nats://localhost:4222")
-	if err != nil {
-		log.Fatal(err)
-	}
-	return conn
-}
-
-func Publish(conn *nats.Conn, task *classes.Task) {
+func Publish(subject string, conn *nats.Conn, task *classes.Task) error {
 
 	pkgJSON, err := json.Marshal(task)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("An error occurred while trying to marshalling json input", err)
 	}
-	err = conn.Publish("putTask", pkgJSON)
+	err = conn.Publish(subject, pkgJSON)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("An error occurred in publishing task to nats queue", err)
 	}
+	return err
 }

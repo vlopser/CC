@@ -15,8 +15,11 @@ type NATSQueue struct {
 }
 
 func NewNATSQueue(subject string) (*NATSQueue, error) {
-	conn := GetConnection()
-	sub, err := conn.QueueSubscribe(subject, "task", func(msg *nats.Msg) {
+	conn, err := nats.Connect("nats://localhost:4222")
+	if err != nil {
+		log.Fatal("It was impossible to open connection to nats queue", err)
+	}
+	sub, err := conn.QueueSubscribe(subject, "test", func(msg *nats.Msg) {
 		log.Println("Received message")
 		var task classes.Task
 		json.Unmarshal(msg.Data, &task)
@@ -30,7 +33,7 @@ func NewNATSQueue(subject string) (*NATSQueue, error) {
 }
 
 func TestPublish(t *testing.T) {
-	queue, err := NewNATSQueue("putTask")
+	queue, err := NewNATSQueue("putTaskTest")
 	if err != nil {
 		log.Fatal("Impossible to create mocked nats queue")
 	}
@@ -58,7 +61,7 @@ func TestPublish(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			log.Println("Start testPutTask test...")
-			Publish(tt.args.conn, tt.args.task)
+			Publish("putTaskTest", tt.args.conn, tt.args.task)
 			time.Sleep(time.Second * 2)
 			queue.conn.Close()
 		})
