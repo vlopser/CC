@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 )
 
 func PostTask(context *gin.Context) {
@@ -23,13 +24,30 @@ func PostTask(context *gin.Context) {
 		log.Println(param)
 	}
 
-	_, err := git.PlainOpen(requestBody.Url)
+	tempFolder, err := os.MkdirTemp("", "tmp")
+	if err != nil {
+		log.Println("Error creating temp folder")
+		context.IndentedJSON(http.StatusInternalServerError, nil)
+		return
+	}
+
+	// check git repo
+	log.Println("Trying to clone git repo to check is validity...")
+	_, err = git.PlainClone(tempFolder, false, &git.CloneOptions{
+		URL: requestBody.Url,
+	})
 	if err == nil {
-		log.Println("Error: The directory is a Git repository.", err)
-	} else if err == git.ErrRepositoryNotExists {
-		// definimos un codigo de error para errores genericos
-		log.Println("Error: The directory is not a Git repository.", err)
+		log.Println("The url represent a Git repository.")
+	} else if err != nil {
+		log.Println("Error: The directory is not a valid Git repository.", err)
 		context.IndentedJSON(http.StatusBadRequest, nil)
+		return
+	}
+
+	err = os.RemoveAll(tempFolder)
+	if err != nil {
+		log.Println("Error trying to delete temp folder")
+		context.IndentedJSON(http.StatusInternalServerError, nil)
 		return
 	}
 
