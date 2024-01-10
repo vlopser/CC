@@ -29,7 +29,7 @@ func PostTask(context *gin.Context) {
 	} else if err == git.ErrRepositoryNotExists {
 		// definimos un codigo de error para errores genericos
 		log.Println("Error: The directory is not a Git repository.", err)
-		context.IndentedJSON(1100, nil)
+		context.IndentedJSON(http.StatusBadRequest, nil)
 		return
 	}
 
