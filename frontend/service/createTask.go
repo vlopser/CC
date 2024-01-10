@@ -2,12 +2,13 @@ package service
 
 import (
 	"frontend/classes"
-	"github.com/gin-gonic/gin"
-	"gopkg.in/src-d/go-git.v4"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
+
+	"github.com/gin-gonic/gin"
+	"gopkg.in/src-d/go-git.v4"
 )
 
 func PostTask(context *gin.Context) {
@@ -52,12 +53,13 @@ func PostTask(context *gin.Context) {
 	}
 
 	task := classes.Task{
-		IdTask:     rand.Int(),
+		TaskId:     rand.Int(),
+		UserMail:   context.Request.Header.Get("X-Forwarded-Email"),
 		RepoUrl:    requestBody.Url,
 		Parameters: requestBody.Parameters,
 		Status:     100,
 	}
 
 	// todo llamar la libreria
-	context.IndentedJSON(http.StatusCreated, task.IdTask)
+	context.IndentedJSON(http.StatusCreated, task)
 }
