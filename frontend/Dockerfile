@@ -15,7 +15,6 @@ COPY service/* service
 RUN go mod init frontend && \
     go get github.com/gin-gonic/gin && \
     go get github.com/gin-contrib/cors && \
-    go get github.com/nats-io/nats.go  && \
     go mod tidy
 
 CMD go run /frontend/main.go

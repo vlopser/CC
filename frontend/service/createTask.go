@@ -25,9 +25,10 @@ func PostTask(context *gin.Context) {
 
 	_, err := git.PlainOpen(requestBody.Url)
 	if err == nil {
-		log.Println("The directory is a Git repository.", err)
+		log.Println("Error: The directory is a Git repository.", err)
 	} else if err == git.ErrRepositoryNotExists {
 		// definimos un codigo de error para errores genericos
+		log.Println("Error: The directory is not a Git repository.", err)
 		context.IndentedJSON(1100, nil)
 		return
 	}
@@ -38,22 +39,6 @@ func PostTask(context *gin.Context) {
 		Parameters: requestBody.Parameters,
 		Status:     100,
 	}
-
-	// open connection to nats
-	//conn, err := nats.Connect("nats://localhost:4222")
-	//if err != nil {
-	//	log.Println("It was impossible to open connection to nats queue", err)
-	//	context.IndentedJSON(1100, nil)
-	//	return
-	//}
-	//
-	//defer conn.Close()
-	//// todo define subject name
-	//err = natsUtils.Publish("", conn, &task)
-	//if err != nil {
-	//	context.IndentedJSON(1100, nil)
-	//	return
-	//}
 
 	// todo llamar la libreria
 	context.IndentedJSON(http.StatusCreated, task.IdTask)
