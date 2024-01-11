@@ -1,9 +1,10 @@
 package main
 
 import (
-	models "cc/Models"
-	. "cc/StoreManager"
-	. "cc/TaskManager"
+	. "cc/pkg/lib/QueueManager"
+	. "cc/pkg/lib/StoreManager"
+	. "cc/pkg/lib/TaskManager"
+	"cc/pkg/models/task"
 	"fmt"
 	"log"
 	"os"
@@ -17,7 +18,7 @@ import (
 
 var wg sync.WaitGroup
 
-func executeTask(task models.Task, nats_server *nats.Conn) {
+func executeTask(task task.Task, nats_server *nats.Conn) {
 	log.Println("Request received!")
 
 	SetTaskStatusToExecuting(nats_server, task.TaskId.String())
@@ -51,7 +52,7 @@ func waitForSigkill() {
 }
 
 func waitForTasks(nats_server *nats.Conn) {
-	//getTasks(nats_server)
+	GetTasks(nats_server, executeTask)
 
 	wg = sync.WaitGroup{}
 	wg.Add(1)
@@ -72,12 +73,12 @@ func main() {
 
 	go waitForSigkill()
 
-	GetTasks(nats_server, executeTask)
+	// GetTasks(nats_server, executeTask)
 
-	// task := models.Task{
+	// task := task.Task{
 	// 	TaskId: uuid.New(),
 	// 	Input:  "www.upv.es",
-	// 	Status: models.PENDING,
+	// 	Status: task.PENDING,
 	// }
 
 	// EnqueueTask(task, nats_server)

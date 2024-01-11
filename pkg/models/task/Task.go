@@ -1,4 +1,4 @@
-package models
+package task
 
 import (
 	"github.com/google/uuid"

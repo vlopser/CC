@@ -1,9 +1,10 @@
 package taskmanager
 
 import (
-	models "cc/Models"
-	. "cc/QueueManager"
-	. "cc/StoreManager"
+	. "cc/pkg/lib/QueueManager"
+	. "cc/pkg/lib/StoreManager"
+	"cc/pkg/models/result"
+	"cc/pkg/models/task"
 	"log"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 )
 
 func SetTaskStatusToExecuting(nats_server *nats.Conn, taskId string) {
-	err := ChangeState(nats_server, taskId, models.EXECUTING)
+	err := ChangeState(nats_server, taskId, task.EXECUTING)
 	if err != nil {
 		log.Println("Error when changing the state of", taskId, "to executing:", err)
 		return
@@ -20,7 +21,7 @@ func SetTaskStatusToExecuting(nats_server *nats.Conn, taskId string) {
 }
 
 func SetTaskStatusToFinished(nats_server *nats.Conn, taskId string) {
-	err := ChangeState(nats_server, taskId, models.FINISHED)
+	err := ChangeState(nats_server, taskId, task.FINISHED)
 	if err != nil {
 		log.Println("Error when changing the state of", taskId, "to finished:", err)
 		return
@@ -28,7 +29,7 @@ func SetTaskStatusToFinished(nats_server *nats.Conn, taskId string) {
 }
 
 func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) {
-	err := ChangeState(nats_server, taskId, models.PENDING)
+	err := ChangeState(nats_server, taskId, task.PENDING)
 	if err != nil {
 		log.Println("Error when changing the state of", taskId, "to pending:", err)
 		return
@@ -36,7 +37,7 @@ func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) {
 }
 
 func PostResult(nats_server *nats.Conn, taskId uuid.UUID, output string) {
-	result := models.Result{
+	result := result.Result{
 		TaskId:    taskId,
 		Output:    output, //cambiar a resultado
 		Timestamp: time.Now(),
@@ -48,6 +49,6 @@ func PostResult(nats_server *nats.Conn, taskId uuid.UUID, output string) {
 	}
 }
 
-func GetTasks(nats_server *nats.Conn, handleFunc func(models.Task, *nats.Conn)) {
+func GetTasks(nats_server *nats.Conn, handleFunc func(task.Task, *nats.Conn)) {
 	SubscribeQueueTask(nats_server, handleFunc)
 }

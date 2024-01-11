@@ -1,7 +1,7 @@
 package queuemanager
 
 import (
-	models "cc/Models"
+	"cc/pkg/models/task"
 	"encoding/json"
 	"fmt"
 
@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	REQUEST_QUEUE = "request"
+	REQUEST_QUEUE = "request_queue"
 	WORKERS_GROUP = "workers_group"
 )
 
-func EnqueueTask(task models.Task, nats_server *nats.Conn) error {
+func EnqueueTask(task task.Task, nats_server *nats.Conn) error {
 
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
@@ -28,14 +28,14 @@ func EnqueueTask(task models.Task, nats_server *nats.Conn) error {
 	return nil
 }
 
-func SubscribeQueueTask(nats_server *nats.Conn, callback func(models.Task, *nats.Conn)) {
+func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.Conn)) {
 	nats_server.QueueSubscribe(
 		REQUEST_QUEUE,
 		WORKERS_GROUP,
 		func(msg *nats.Msg) {
 			fmt.Printf("Mensaje recibido: %s\n", msg.Data)
 
-			var task models.Task
+			var task task.Task
 			err := json.Unmarshal(msg.Data, &task)
 			if err != nil {
 				fmt.Println("Error when unmarshalling JSON:", err)

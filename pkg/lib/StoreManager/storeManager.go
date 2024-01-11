@@ -1,7 +1,8 @@
 package storemanager
 
 import (
-	models "cc/Models"
+	"cc/pkg/models/result"
+	"cc/pkg/models/task"
 	"fmt"
 
 	"github.com/nats-io/nats.go"
@@ -12,7 +13,7 @@ const (
 	RESULTS_BUCKET = "results_bucket"
 )
 
-func ChangeState(nats_server *nats.Conn, idTask string, status models.Status) error {
+func ChangeState(nats_server *nats.Conn, idTask string, status task.Status) error {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return err
@@ -31,7 +32,7 @@ func ChangeState(nats_server *nats.Conn, idTask string, status models.Status) er
 	return nil
 }
 
-func StoreResult(nats_server *nats.Conn, result models.Result) error {
+func StoreResult(nats_server *nats.Conn, result result.Result) error {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return err
@@ -39,6 +40,7 @@ func StoreResult(nats_server *nats.Conn, result models.Result) error {
 
 	results_bucket, err := js.ObjectStore(RESULTS_BUCKET)
 	if err != nil {
+		println("ey")
 		return err
 	}
 
@@ -50,7 +52,7 @@ func StoreResult(nats_server *nats.Conn, result models.Result) error {
 	return nil
 }
 
-func GetResult(nats_server *nats.Conn, taskId string) (*models.Result, error) {
+func GetResult(nats_server *nats.Conn, taskId string) (*result.Result, error) {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return nil, err
@@ -61,7 +63,7 @@ func GetResult(nats_server *nats.Conn, taskId string) (*models.Result, error) {
 		return nil, err
 	}
 
-	var result models.Result
+	var result result.Result
 	result.Output, err = results_bucket.GetString(taskId)
 	if err != nil {
 		return nil, err
