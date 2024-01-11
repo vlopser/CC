@@ -8,24 +8,105 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/nats-io/nats.go"
 )
 
 var wg sync.WaitGroup
 
-func executeTask(task task.Task, nats_server *nats.Conn) {
+func cloneRepo(repo_url string, root_dir string) {
+
+	// Verificar si el directorio existe
+	if _, err := os.Stat(root_dir + task.REPO_DIR); err == nil {
+		// Si el directorio existe, lo eliminamos
+		err := os.RemoveAll(root_dir + task.REPO_DIR)
+		if err != nil {
+			fmt.Println("Error al eliminar el directorio existente:", err)
+			return
+		}
+	}
+
+	// Clonar el repositorio
+	_, err := git.PlainClone(root_dir+task.REPO_DIR, false, &git.CloneOptions{
+		URL:      repo_url,
+		Progress: os.Stdout,
+	})
+	if err != nil {
+		fmt.Println("Error al clonar el repositorio:", err)
+		return
+	}
+
+}
+
+func executeTask(root_dir string) {
+
+	// Abrir el archivo en modo escritura, crear si no existe, agregar al final si existe
+	file, err := os.OpenFile(root_dir+task.RESULT_DIR+task.OUTPUT_FILE, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		fmt.Println("Error al abrir el archivo:", err)
+		return
+	}
+	defer file.Close()
+
+	cmd := exec.Command("go", "run", root_dir+task.REPO_DIR+"/main.go")
+
+	cmd.Stdout = file
+	cmd.Stderr = os.Stderr
+
+	// Ejecutar el comando
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println("Error al ejecutar el archivo:", err)
+		return
+	}
+}
+
+func createDirectories(root_dir string) {
+
+	err := os.Mkdir(root_dir, 0755)
+	if err != nil {
+		fmt.Println("Error al crear el directorio:", err)
+		return
+	}
+
+	task_result_dir := root_dir + task.RESULT_DIR
+	err = os.Mkdir(task_result_dir, 0755)
+	if err != nil {
+		fmt.Println("Error al crear el directorio:", err)
+		return
+	}
+
+}
+
+func manageTask(task task.Task) {
+
+	task_dir := task.TaskId.String()
+	createDirectories(task_dir)
+
+	cloneRepo(task.Input, task_dir)
+
+	executeTask(task_dir)
+
+}
+
+func handleFunction(task task.Task, nats_server *nats.Conn) {
 	log.Println("Request received!")
 
 	SetTaskStatusToExecuting(nats_server, task.TaskId.String())
 
-	fmt.Println("Executed task") // result = func()
+	init := time.Now()
+	manageTask(task)
+	end := time.Now()
 
-	PostResult(nats_server, task.TaskId, task.Input)
+	time_elapsed := end.Sub(init)
+
+	PostResult(nats_server, task.TaskId, "quitar", time_elapsed)
 
 	SetTaskStatusToFinished(nats_server, task.TaskId.String())
 
@@ -35,7 +116,7 @@ func executeTask(task task.Task, nats_server *nats.Conn) {
 	// 	log.Println("Error when storing the result of", task.TaskId, ":", err)
 	// 	return
 	// }
-	// println(res.Output)
+	// println("Solucion en ", res)
 }
 
 func waitForSigkill() {
@@ -52,7 +133,7 @@ func waitForSigkill() {
 }
 
 func waitForTasks(nats_server *nats.Conn) {
-	GetTasks(nats_server, executeTask)
+	GetTasks(nats_server, handleFunction)
 
 	wg = sync.WaitGroup{}
 	wg.Add(1)
@@ -73,11 +154,11 @@ func main() {
 
 	go waitForSigkill()
 
-	// GetTasks(nats_server, executeTask)
+	// GetTasks(nats_server, handleFunction)
 
 	// task := task.Task{
 	// 	TaskId: uuid.New(),
-	// 	Input:  "www.upv.es",
+	// 	Input:  "https://github.com/go-training/helloworld.git",
 	// 	Status: task.PENDING,
 	// }
 

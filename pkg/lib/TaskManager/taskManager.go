@@ -36,12 +36,13 @@ func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) {
 	}
 }
 
-func PostResult(nats_server *nats.Conn, taskId uuid.UUID, output string) {
+func PostResult(nats_server *nats.Conn, taskId uuid.UUID, output string, time_elapsed time.Duration) {
 	result := result.Result{
-		TaskId:    taskId,
-		Output:    output, //cambiar a resultado
-		Timestamp: time.Now(),
+		TaskId:      taskId,
+		Output:      output, // Quitar?
+		TimeElapsed: time_elapsed,
 	}
+
 	err := StoreResult(nats_server, result)
 	if err != nil {
 		log.Println("Error when storing the result of", taskId.String(), ":", err)

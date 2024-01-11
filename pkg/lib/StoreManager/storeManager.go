@@ -44,30 +44,41 @@ func StoreResult(nats_server *nats.Conn, result result.Result) error {
 		return err
 	}
 
-	_, err = results_bucket.PutString(result.TaskId.String(), result.Output)
+	results_bucket.PutFile(result.TaskId.String() + "/result/output.txt")
 	if err != nil {
 		return err
 	}
 
+	// _, err = results_bucket.PutString(result.TaskId.String(), result.Output)
+	// if err != nil {
+	// 	return err
+	// }
+
 	return nil
 }
 
-func GetResult(nats_server *nats.Conn, taskId string) (*result.Result, error) {
+func GetResult(nats_server *nats.Conn, taskId string) (string, error) {
 	js, err := nats_server.JetStream()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	results_bucket, err := js.ObjectStore(RESULTS_BUCKET)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	var result result.Result
-	result.Output, err = results_bucket.GetString(taskId)
+	file_pulled := "result_" + taskId
+
+	results_bucket.GetFile(taskId+task.RESULT_DIR+task.OUTPUT_FILE, file_pulled)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &result, nil
+	// res := result.Result{
+	// 	TaskId: taskId,
+	// 	Output: "",
+	// }
+
+	return file_pulled, nil
 }

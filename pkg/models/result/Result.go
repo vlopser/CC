@@ -7,7 +7,7 @@ import (
 )
 
 type Result struct {
-	TaskId    uuid.UUID
-	Output    string
-	Timestamp time.Time
+	TaskId      uuid.UUID
+	Output      string
+	TimeElapsed time.Duration
 }

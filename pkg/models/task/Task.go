@@ -17,3 +17,9 @@ type Task struct {
 	Input  string
 	Status Status
 }
+
+const (
+	REPO_DIR    = "/repo"
+	RESULT_DIR  = "/result"
+	OUTPUT_FILE = "/output.txt"
+)
