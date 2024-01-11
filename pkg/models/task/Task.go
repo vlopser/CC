@@ -19,7 +19,8 @@ type Task struct {
 }
 
 const (
-	REPO_DIR    = "/repo"
-	RESULT_DIR  = "/result"
-	OUTPUT_FILE = "/output.txt"
+	REPO_DIR    = "/repo/"
+	RESULT_DIR  = "/result/"
+	OUTPUT_FILE = "output.txt"
+	ERRORS_FILE = "errors.txt"
 )

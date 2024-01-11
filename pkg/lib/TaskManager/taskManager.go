@@ -6,9 +6,7 @@ import (
 	"cc/pkg/models/result"
 	"cc/pkg/models/task"
 	"log"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 )
 
@@ -36,16 +34,28 @@ func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) {
 	}
 }
 
-func PostResult(nats_server *nats.Conn, taskId uuid.UUID, output string, time_elapsed time.Duration) {
-	result := result.Result{
-		TaskId:      taskId,
-		Output:      output, // Quitar?
-		TimeElapsed: time_elapsed,
+func PostResult(nats_server *nats.Conn, result result.Result) {
+
+	bucket := result.TaskId.String()
+	err := CreateTaskBucket(nats_server, bucket)
+	if err != nil {
+		log.Println("Error when creating the bucket", result.TaskId.String(), ":", err)
+		return
 	}
 
-	err := StoreResult(nats_server, result)
+	file_name := "output.txt"
+	file_path := result.TaskId.String() + "/result/" + file_name
+	err = StoreFileInBucket(nats_server, file_path, file_name, bucket)
 	if err != nil {
-		log.Println("Error when storing the result of", taskId.String(), ":", err)
+		log.Println("Error when storing the result of", result.TaskId.String(), ":", err)
+		return
+	}
+
+	file_name = "errors.txt"
+	file_path = result.TaskId.String() + "/result/" + file_name
+	err = StoreFileInBucket(nats_server, file_path, file_name, bucket)
+	if err != nil {
+		log.Println("Error when storing the result of", result.TaskId.String(), ":", err)
 		return
 	}
 }

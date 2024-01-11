@@ -4,6 +4,7 @@ import (
 	. "cc/pkg/lib/QueueManager"
 	. "cc/pkg/lib/StoreManager"
 	. "cc/pkg/lib/TaskManager"
+	"cc/pkg/models/result"
 	"cc/pkg/models/task"
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 )
 
@@ -54,15 +56,33 @@ func executeTask(root_dir string) {
 	}
 	defer file.Close()
 
-	cmd := exec.Command("go", "run", root_dir+task.REPO_DIR+"/main.go")
+	file_errors, err := os.OpenFile(root_dir+task.RESULT_DIR+task.ERRORS_FILE, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		fmt.Println("Error al abrir el archivo:", err)
+		return
+	}
+	defer file_errors.Close()
+
+	cmd := exec.Command("go", "mod", "tidy")
+
+	cmd.Dir = root_dir + task.REPO_DIR
+	cmd.Stderr = file_errors
+
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println("Error when executing 'go mod tidy':", err)
+		return
+	}
+
+	cmd = exec.Command("go", "run", root_dir+task.REPO_DIR+"/main.go")
 
 	cmd.Stdout = file
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = file_errors
 
 	// Ejecutar el comando
 	err = cmd.Run()
 	if err != nil {
-		fmt.Println("Error al ejecutar el archivo:", err)
+		fmt.Println("Error when executing `go run "+root_dir+task.REPO_DIR+"/main.go':", err)
 		return
 	}
 }
@@ -95,7 +115,16 @@ func manageTask(task task.Task) {
 
 }
 
-func handleFunction(task task.Task, nats_server *nats.Conn) {
+func cleanDirectory(root_dir string) {
+
+	err := os.RemoveAll(root_dir)
+	if err != nil {
+		log.Println(err)
+	}
+
+}
+
+func handleRequest(task task.Task, nats_server *nats.Conn) {
 	log.Println("Request received!")
 
 	SetTaskStatusToExecuting(nats_server, task.TaskId.String())
@@ -104,19 +133,25 @@ func handleFunction(task task.Task, nats_server *nats.Conn) {
 	manageTask(task)
 	end := time.Now()
 
-	time_elapsed := end.Sub(init)
-
-	PostResult(nats_server, task.TaskId, "quitar", time_elapsed)
+	PostResult(
+		nats_server,
+		result.Result{
+			TaskId:      task.TaskId,
+			TimeElapsed: end.Sub(init),
+		},
+	)
 
 	SetTaskStatusToFinished(nats_server, task.TaskId.String())
 
+	cleanDirectory(task.TaskId.String()) //Clean all tmp directories created for the task
+
 	//CODIGO DEL FRONTEND
-	// res, err := GetResult(nats_server, task.TaskId.String())
-	// if err != nil {
-	// 	log.Println("Error when storing the result of", task.TaskId, ":", err)
-	// 	return
-	// }
-	// println("Solucion en ", res)
+	res, err := GetResult(nats_server, task.TaskId.String())
+	if err != nil {
+		log.Println("Error when storing the result of", task.TaskId, ":", err)
+		return
+	}
+	println("Solucion en ", res.Output)
 }
 
 func waitForSigkill() {
@@ -133,7 +168,7 @@ func waitForSigkill() {
 }
 
 func waitForTasks(nats_server *nats.Conn) {
-	GetTasks(nats_server, handleFunction)
+	// GetTasks(nats_server, handleFunction)
 
 	wg = sync.WaitGroup{}
 	wg.Add(1)
@@ -154,15 +189,15 @@ func main() {
 
 	go waitForSigkill()
 
-	// GetTasks(nats_server, handleFunction)
+	GetTasks(nats_server, handleRequest)
 
-	// task := task.Task{
-	// 	TaskId: uuid.New(),
-	// 	Input:  "https://github.com/go-training/helloworld.git",
-	// 	Status: task.PENDING,
-	// }
+	task := task.Task{
+		TaskId: uuid.New(),
+		Input:  "https://github.com/go-training/helloworld.git",
+		Status: task.PENDING,
+	}
 
-	// EnqueueTask(task, nats_server)
+	EnqueueTask(task, nats_server)
 
 	waitForTasks(nats_server)
 }

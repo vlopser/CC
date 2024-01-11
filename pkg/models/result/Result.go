@@ -9,5 +9,6 @@ import (
 type Result struct {
 	TaskId      uuid.UUID
 	Output      string
+	Errors      string
 	TimeElapsed time.Duration
 }
