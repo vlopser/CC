@@ -90,29 +90,20 @@ func GetResult(nats_server *nats.Conn, taskId string) (*result.Result, error) {
 		return nil, err
 	}
 
-	file_output := "output_" + taskId
-	bucket.GetFile(task.OUTPUT_FILE, file_output)
-	if err != nil {
-		return nil, err
-	}
-
-	file_errors := "errors_" + taskId
-	bucket.GetFile(task.ERRORS_FILE, file_errors)
-	if err != nil {
-		return nil, err
-	}
-
-	//TODO: Check if error file is empty, dont return it
-
-	parsedUUID, err := uuid.Parse(taskId)
+	parsedTaskId, err := uuid.Parse(taskId)
 	if err != nil {
 		fmt.Println("Error parsing UUID:", err)
 		return nil, err
 	}
+
 	res := result.Result{
-		TaskId: parsedUUID,
-		Output: file_output,
-		Errors: file_errors,
+		TaskId: parsedTaskId,
+	}
+
+	files_in_bucket, _ := bucket.List()
+	for _, file := range files_in_bucket {
+		bucket.GetFile(file.Name, "frontend_"+file.Name)
+		res.Files = append(res.Files, file.Name)
 	}
 
 	return &res, nil

@@ -7,9 +7,10 @@ import (
 type Status int
 
 const (
-	PENDING   Status = 100
-	EXECUTING Status = 200
-	FINISHED  Status = 300
+	PENDING         Status = 100
+	EXECUTING       Status = 200
+	FINISHED        Status = 300
+	FINISHED_ERRORS Status = 400
 )
 
 type Task struct {

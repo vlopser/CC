@@ -6,12 +6,21 @@ import (
 	"cc/pkg/models/result"
 	"cc/pkg/models/task"
 	"log"
+	"path"
 
 	"github.com/nats-io/nats.go"
 )
 
 func SetTaskStatusToExecuting(nats_server *nats.Conn, taskId string) {
 	err := ChangeState(nats_server, taskId, task.EXECUTING)
+	if err != nil {
+		log.Println("Error when changing the state of", taskId, "to executing:", err)
+		return
+	}
+}
+
+func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, taskId string) {
+	err := ChangeState(nats_server, taskId, task.FINISHED_ERRORS)
 	if err != nil {
 		log.Println("Error when changing the state of", taskId, "to executing:", err)
 		return
@@ -43,20 +52,12 @@ func PostResult(nats_server *nats.Conn, result result.Result) {
 		return
 	}
 
-	file_name := "output.txt"
-	file_path := result.TaskId.String() + "/result/" + file_name
-	err = StoreFileInBucket(nats_server, file_path, file_name, bucket)
-	if err != nil {
-		log.Println("Error when storing the result of", result.TaskId.String(), ":", err)
-		return
-	}
-
-	file_name = "errors.txt"
-	file_path = result.TaskId.String() + "/result/" + file_name
-	err = StoreFileInBucket(nats_server, file_path, file_name, bucket)
-	if err != nil {
-		log.Println("Error when storing the result of", result.TaskId.String(), ":", err)
-		return
+	for _, file := range result.Files {
+		err = StoreFileInBucket(nats_server, file, path.Base(file), bucket)
+		if err != nil {
+			log.Println("Error when storing the file", file, ":", err)
+			return
+		}
 	}
 }
 
