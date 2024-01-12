@@ -7,20 +7,22 @@ import (
 	"os"
 )
 
-func CreateDirectories(root_dir string) {
+func CreateTaskDirectory(task_id string) error {
 
-	err := os.Mkdir(root_dir, 0755)
+	err := os.Mkdir(task_id, 0755)
 	if err != nil {
 		fmt.Println("Error al crear el directorio:", err)
-		return
+		return err
 	}
 
-	task_result_dir := root_dir + task.RESULT_DIR
+	task_result_dir := task_id + task.RESULT_DIR
 	err = os.Mkdir(task_result_dir, 0755)
 	if err != nil {
 		fmt.Println("Error al crear el directorio:", err)
-		return
+		return err
 	}
+
+	return nil
 }
 
 func CleanDirectory(root_dir string) {
@@ -29,6 +31,14 @@ func CleanDirectory(root_dir string) {
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func CreateErrorFile(task_id string, error_msg string) string {
+	file_errors := OpenFile(task_id + task.RESULT_DIR + task.ERROR_FILE)
+	defer file_errors.Close()
+	file_errors.WriteString(error_msg)
+
+	return file_errors.Name()
 }
 
 func IsFileEmpty(file *os.File) (bool, error) {

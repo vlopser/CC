@@ -54,10 +54,10 @@ func PostResult(nats_server *nats.Conn, result result.Result) {
 
 	for _, file := range result.Files {
 		err = StoreFileInBucket(nats_server, file, path.Base(file), bucket)
-		if err != nil {
-			log.Println("Error when storing the file", file, ":", err)
-			return
-		}
+		// if err != nil {
+		// 	log.Println("Error when storing the file", file, ":", err)
+		// 	return
+		// }
 	}
 }
 
