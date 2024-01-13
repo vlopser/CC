@@ -1,0 +1,4 @@
+>> go mod tidy
+>> go run main.go
+Result is: 3
+Archivo creado exitosamente: ejemplo.txt

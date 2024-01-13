@@ -1,0 +1,3 @@
+>> go run go mod tidy
+>> go run go run main.go
+ID is: c50aabf0-3485-44ba-991d-f5e2c57f21ec
