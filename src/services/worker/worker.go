@@ -1,8 +1,6 @@
 package main
 
 import (
-	. "cc/pkg/lib/QueueManager"
-	. "cc/pkg/lib/StoreManager"
 	. "cc/pkg/lib/TaskManager"
 	"cc/services/worker/utils"
 	"context"
@@ -17,7 +15,6 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 )
 
@@ -35,7 +32,7 @@ func waitForTasks(nats_server *nats.Conn, wg *sync.WaitGroup) {
 func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, command string) error {
 	// Add command executed to files
 	stdout_file.WriteString(">> " + command + "\n")
-	stderr_file.WriteString(">> go run " + command + "\n")
+	stderr_file.WriteString(">> " + command + "\n")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -103,7 +100,7 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 
 	utils.CreateTaskDirectory(t.TaskId.String())
 
-	err := cloneRepo(t.Input, t.TaskId.String())
+	err := cloneRepo(t.RepoUrl, t.TaskId.String())
 	if err != nil {
 		error_file := utils.CreateErrorFile(t.TaskId.String(), "Error cloning repo: "+err.Error())
 		PostResult(
@@ -180,13 +177,13 @@ func main() {
 	GetTasks(nats_server, handleRequest)
 
 	// Codigo frontend
-	task := task.Task{
-		TaskId: uuid.New(),
-		Input:  "https://github.com/algaru01/CC-test-error-exec.git",
-		Status: task.PENDING,
-	}
+	// task := task.Task{
+	// 	TaskId: uuid.New(),
+	// 	RepoUrl:  "https://github.com/go-training/helloworld.git",
+	// 	Status: task.PENDING,
+	// }
 
-	EnqueueTask(task, nats_server)
+	// EnqueueTask(task, nats_server)
 
 	waitForTasks(nats_server, &wg)
 }

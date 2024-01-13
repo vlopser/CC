@@ -4,6 +4,7 @@ package main
 
 import (
 	. "cc/pkg/lib/TaskManager"
+	"log"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -20,13 +21,11 @@ func main() {
 	config.AllowOrigins = []string{"*"}
 	router.Use(cors.New(config))
 
-	// nats_server, err := nats.Connect(nats.DefaultURL)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// defer nats_server.Close()
-
-	var nats_server *nats.Conn
+	nats_server, err := nats.Connect(nats.DefaultURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer nats_server.Close()
 
 	//Para obtener los datos
 	router.GET("/getResult", func(ctx *gin.Context) { GetTaskResult(ctx, nats_server) })

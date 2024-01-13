@@ -9,8 +9,8 @@ import (
 	"path"
 
 	"github.com/nats-io/nats.go"
-  
-  "cc/pkg/models/request"
+
+	"cc/pkg/models/request"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -94,10 +94,11 @@ func CreateTask(context *gin.Context, nats_server *nats.Conn) {
 		UserMail:   context.Request.Header.Get("X-Forwarded-Email"),
 		RepoUrl:    requestBody.Url,
 		Parameters: requestBody.Parameters,
-		Status:     100,
 	}
 
-	//EnqueueTask(task, nats_server)
+	EnqueueTask(task, nats_server)
+
+	SetTaskStatusToPending(nats_server, task.TaskId.String())
 
 	// todo llamar la libreria
 	context.IndentedJSON(http.StatusCreated, task.TaskId)
@@ -114,7 +115,7 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 
 	log.Println("Received request to get result for task " + taskId)
 
-	//res := GetResult(nats_server, taskId)
+	GetResult(nats_server, taskId)
 
 	//zip con los res.File
 
