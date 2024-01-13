@@ -1,12 +1,11 @@
 package main
 
 import (
-	// . "cc/pkg/lib/QueueManager"
-	// . "cc/pkg/lib/StoreManager"
+	. "cc/pkg/lib/QueueManager"
+	. "cc/pkg/lib/StoreManager"
 	. "cc/pkg/lib/TaskManager"
+	"cc/services/worker/utils"
 	"context"
-
-	"cc/worker/utils"
 
 	"cc/pkg/models/result"
 	"cc/pkg/models/task"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 )
 
@@ -180,14 +180,13 @@ func main() {
 	GetTasks(nats_server, handleRequest)
 
 	// Codigo frontend
-	// task := task.Task{
-	// 	TaskId: uuid.New(),
-	// 	Input:  "https://github.com/algaru01/CC-test-error-exec.git",
-	// 	Status: task.PENDING,
-	// }
+	task := task.Task{
+		TaskId: uuid.New(),
+		Input:  "https://github.com/algaru01/CC-test-error-exec.git",
+		Status: task.PENDING,
+	}
 
-	// EnqueueTask(task, nats_server)
-	//
+	EnqueueTask(task, nats_server)
 
 	waitForTasks(nats_server, &wg)
 }
