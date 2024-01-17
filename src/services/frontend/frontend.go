@@ -39,7 +39,7 @@ func main() {
 
 	router.GET("/getTaskStatus", func(ctx *gin.Context) { GetTaskStatus(ctx, nats_server) })
 
-	router.GET("/getAllTaskId", func(ctx *gin.Context) { GetAllTaskIds(ctx, nats_server) })
+	router.GET("/getAllTasks", func(ctx *gin.Context) { GetAllTasks(ctx, nats_server) })
 	//Ejecutar el servidor
 	router.Run("0.0.0.0:8080")
 }

@@ -2,7 +2,7 @@ package taskmanager
 
 import (
 	. "cc/src/pkg/lib/QueueManager"
-	. "cc/src/pkg/lib/StoreManager"
+	store "cc/src/pkg/lib/StoreManager"
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
 	"log"
@@ -22,7 +22,7 @@ const (
 )
 
 func SetTaskStatusToExecuting(nats_server *nats.Conn, t task.Task) error {
-	err := ChangeState(nats_server, t.TaskId.String(), t.UserId, task.EXECUTING)
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.EXECUTING)
 	if err != nil {
 		log.Println("Error when changing the state of", t.TaskId.String(), "to executing:", err)
 		return err
@@ -32,7 +32,7 @@ func SetTaskStatusToExecuting(nats_server *nats.Conn, t task.Task) error {
 }
 
 func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, t task.Task) error {
-	err := ChangeState(nats_server, t.TaskId.String(), t.UserId, task.FINISHED_ERRORS)
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.FINISHED_ERRORS)
 	if err != nil {
 		log.Println("Error when changing the state of", t.TaskId.String(), "to executing:", err)
 		return err
@@ -42,7 +42,7 @@ func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, t task.Task) erro
 }
 
 func SetTaskStatusToFinished(nats_server *nats.Conn, t task.Task) error {
-	err := ChangeState(nats_server, t.TaskId.String(), t.UserId, task.FINISHED)
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.FINISHED)
 	if err != nil {
 		log.Println("Error when changing the state of", t.TaskId.String(), "to finished:", err)
 		return err
@@ -52,7 +52,7 @@ func SetTaskStatusToFinished(nats_server *nats.Conn, t task.Task) error {
 }
 
 func SetTaskStatusToPending(nats_server *nats.Conn, t task.Task) error {
-	err := ChangeState(nats_server, t.TaskId.String(), t.UserId, task.PENDING)
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.PENDING)
 	if err != nil {
 		log.Println("Error when changing the state of", t.TaskId.String(), "to pending:", err)
 		return err
@@ -64,14 +64,14 @@ func SetTaskStatusToPending(nats_server *nats.Conn, t task.Task) error {
 func PostResult(nats_server *nats.Conn, result result.Result) {
 
 	bucket := result.TaskId.String()
-	err := CreateTaskBucket(nats_server, bucket)
+	err := store.CreateTaskBucket(nats_server, bucket)
 	if err != nil {
 		log.Println("Error when creating the bucket", result.TaskId.String(), ":", err)
 		return
 	}
 
 	for _, file := range result.Files {
-		err = StoreFileInBucket(nats_server, file, path.Base(file), bucket)
+		err = store.StoreFileInBucket(nats_server, file, path.Base(file), bucket)
 		// if err != nil {
 		// 	log.Println("Error when storing the file", file, ":", err)
 		// 	return
@@ -135,7 +135,7 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 
 	log.Println("Received request to get result for task " + taskId)
 
-	GetResult(nats_server, taskId)
+	store.GetResult(nats_server, taskId)
 
 	//zip con los res.File
 
@@ -144,7 +144,7 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 	// filePath := "hola.txt"
 	// context.FileAttachment(filePath, "hola.txt")
 
-	context.IndentedJSON(http.StatusCreated, "ok")
+	context.IndentedJSON(http.StatusOK, "ok")
 }
 
 func GetTaskStatus(context *gin.Context, nats_server *nats.Conn) {
@@ -158,19 +158,26 @@ func GetTaskStatus(context *gin.Context, nats_server *nats.Conn) {
 
 	userId := context.Request.Header.Get("X-Forwarded-User")
 
-	task_state, err := GetTaskState(nats_server, taskId, userId)
+	task_state, err := store.GetTaskStatus(nats_server, taskId, userId)
 	if err != nil {
 		context.IndentedJSON(http.StatusForbidden, "Error: no task with given ID")
 	}
 
-	context.IndentedJSON(http.StatusCreated, task_state.String())
+	context.IndentedJSON(http.StatusOK, task_state.String())
 }
 
-func GetAllTaskIds(context *gin.Context, nats_server *nats.Conn) {
+func GetAllTasks(context *gin.Context, nats_server *nats.Conn) {
 
 	userId := context.Request.Header.Get("X-Forwarded-User")
 
-	allTaskIds, _ := GetAllTaskId(nats_server, userId)
+	allTaskIds, _ := store.GetUserTasks(nats_server, userId)
+	// if err != nil {
+	// 	context.IndentedJSON(http.StatusForbidden, err.Error())
+	// }
 
-	context.IndentedJSON(http.StatusCreated, allTaskIds)
+	if len(allTaskIds) == 0 {
+		context.IndentedJSON(http.StatusNoContent, allTaskIds)
+	}
+
+	context.IndentedJSON(http.StatusOK, allTaskIds)
 }

@@ -18,7 +18,7 @@ const (
 	RESULTS_BUCKET = "results_bucket"
 )
 
-func ChangeState(nats_server *nats.Conn, idTask string, idUser string, status task.Status) error {
+func SetTaskStatus(nats_server *nats.Conn, idUser string, idTask string, status task.Status) error {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func ChangeState(nats_server *nats.Conn, idTask string, idUser string, status ta
 	return nil
 }
 
-func GetTaskState(nats_server *nats.Conn, idTask string, idUser string) (*task.Status, error) {
+func GetTaskStatus(nats_server *nats.Conn, idTask string, idUser string) (*task.Status, error) {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func GetTaskState(nats_server *nats.Conn, idTask string, idUser string) (*task.S
 
 }
 
-func GetAllTaskId(nats_server *nats.Conn, idUser string) ([]string, error) {
+func GetUserTasks(nats_server *nats.Conn, idUser string) ([]string, error) {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return nil, err
@@ -81,17 +81,15 @@ func GetAllTaskId(nats_server *nats.Conn, idUser string) ([]string, error) {
 		return nil, err
 	}
 
-	allTasks, _ := user_bucket.ListKeys()
-	// if err != nil {
-	// 	log.Println("")
-	// }
-
-	// allTaskIds := <-allTasks.Keys()
+	ch_user_tasks, err := user_bucket.ListKeys()
+	if err != nil {
+		return nil, err
+	}
 
 	result := make([]string, 0)
 
-	for key := range allTasks.Keys() {
-		result = append(result, key)
+	for task := range ch_user_tasks.Keys() {
+		result = append(result, task)
 	}
 
 	return result, nil
