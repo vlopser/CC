@@ -110,12 +110,12 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 				Files:  []string{error_file},
 			},
 		)
-		SetTaskStatusToFinishedWithErrors(nats_server, t.TaskId.String())
+		SetTaskStatusToFinishedWithErrors(nats_server, t)
 		utils.CleanDirectory(t.TaskId.String())
 		return
 	}
 
-	SetTaskStatusToExecuting(nats_server, t.TaskId.String())
+	SetTaskStatusToExecuting(nats_server, t)
 
 	init := time.Now()
 	err = executeTask(t.TaskId.String())
@@ -134,7 +134,7 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 				},
 			},
 		)
-		SetTaskStatusToFinishedWithErrors(nats_server, t.TaskId.String())
+		SetTaskStatusToFinishedWithErrors(nats_server, t)
 		utils.CleanDirectory(t.TaskId.String())
 		return
 	}
@@ -151,7 +151,7 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 		},
 	)
 
-	SetTaskStatusToFinished(nats_server, t.TaskId.String())
+	SetTaskStatusToFinished(nats_server, t)
 	utils.CleanDirectory(t.TaskId.String()) //Clean all tmp directories created for the task
 
 	//CODIGO DEL FRONTEND

@@ -4,7 +4,9 @@ import (
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
 	"fmt"
+	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,29 +18,82 @@ const (
 	RESULTS_BUCKET = "results_bucket"
 )
 
-func ChangeState(nats_server *nats.Conn, idTask string, status task.Status) error {
+func SetTaskStatus(nats_server *nats.Conn, idUser string, idTask string, status task.Status) error {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return err
 	}
 
-	status_bucket, err := js.KeyValue(STATUS_BUCKET)
+	user_bucket, err := js.KeyValue(idUser)
 	if err != nil {
-		status_bucket, err = js.CreateKeyValue(&nats.KeyValueConfig{
-			Bucket: STATUS_BUCKET,
+		log.Println(err.Error())
+		user_bucket, err = js.CreateKeyValue(&nats.KeyValueConfig{
+			Bucket: idUser,
 		})
 		if err != nil {
-			return nil
+			log.Println(err.Error())
+			return err
 		}
 		// return err
 	}
 
-	status_bucket.Put(idTask, []byte(fmt.Sprintf("%d", status)))
+	user_bucket.Put(idTask, []byte(fmt.Sprintf("%d", status)))
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func GetTaskStatus(nats_server *nats.Conn, idTask string, idUser string) (*task.Status, error) {
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return nil, err
+	}
+	user_bucket, err := js.KeyValue(idUser)
+	if err != nil {
+		log.Println("User bucket does not exist:", err.Error())
+		return nil, err
+	}
+
+	task_status, err := user_bucket.Get(idTask)
+	if err != nil {
+		log.Println("Task KV does not exist:", err.Error())
+		return nil, err
+	}
+
+	//Convert from []bytes to Status type
+	val, _ := strconv.Atoi(string(task_status.Value()))
+	res := task.Status(val)
+
+	return &res, nil
+
+}
+
+func GetUserTasks(nats_server *nats.Conn, idUser string) ([]string, error) {
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return nil, err
+	}
+	user_bucket, err := js.KeyValue(idUser)
+	if err != nil {
+		log.Println("User bucket does not exist:", err.Error())
+		return nil, err
+	}
+
+	ch_user_tasks, err := user_bucket.ListKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]string, 0)
+
+	for task := range ch_user_tasks.Keys() {
+		result = append(result, task)
+	}
+
+	return result, nil
+
 }
 
 func StoreFileInBucket(nats_server *nats.Conn, file_path string, file_name string, bucket_name string) error {

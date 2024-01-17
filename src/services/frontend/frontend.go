@@ -36,6 +36,10 @@ func main() {
 	router.GET("/getResult", func(ctx *gin.Context) { GetTaskResult(ctx, nats_server) })
 	//Para agregar datos
 	router.POST("/createTask", func(ctx *gin.Context) { CreateTask(ctx, nats_server) })
+
+	router.GET("/getTaskStatus", func(ctx *gin.Context) { GetTaskStatus(ctx, nats_server) })
+
+	router.GET("/getAllTasks", func(ctx *gin.Context) { GetAllTasks(ctx, nats_server) })
 	//Ejecutar el servidor
 	router.Run("0.0.0.0:8080")
 }

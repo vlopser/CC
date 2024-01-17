@@ -13,13 +13,28 @@ const (
 	FINISHED_ERRORS Status = 400
 )
 
+func (s Status) String() string {
+	switch s {
+	case PENDING:
+		return "PENDING"
+	case EXECUTING:
+		return "EXECUTING"
+	case FINISHED:
+		return "FINISHED"
+	case FINISHED_ERRORS:
+		return "FINISHED_WITH_ERRORS"
+	}
+
+	return ""
+}
+
 type Task struct {
-  TaskId     uuid.UUID `json:"TaskId"`
-  UserMail   string
+	TaskId     uuid.UUID `json:"TaskId"`
+	UserId     string
 	RepoUrl    string   `json:"repoUrl"`
-  Parameters []string `json:"parameters"`
-	Input      string //cambiar a RepoUrl
-  Status     Status   `json:"status"`
+	Parameters []string `json:"parameters"`
+	Input      string   //cambiar a RepoUrl
+	Status     Status   `json:"status"`
 }
 
 const (

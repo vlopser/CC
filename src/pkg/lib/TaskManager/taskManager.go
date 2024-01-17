@@ -2,7 +2,7 @@ package taskmanager
 
 import (
 	. "cc/src/pkg/lib/QueueManager"
-	. "cc/src/pkg/lib/StoreManager"
+	store "cc/src/pkg/lib/StoreManager"
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
 	"log"
@@ -21,40 +21,40 @@ const (
 	TASK_ID_PARAM = "taskId"
 )
 
-func SetTaskStatusToExecuting(nats_server *nats.Conn, taskId string) error {
-	err := ChangeState(nats_server, taskId, task.EXECUTING)
+func SetTaskStatusToExecuting(nats_server *nats.Conn, t task.Task) error {
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.EXECUTING)
 	if err != nil {
-		log.Println("Error when changing the state of", taskId, "to executing:", err)
+		log.Println("Error when changing the state of", t.TaskId.String(), "to executing:", err)
 		return err
 	}
 
 	return nil
 }
 
-func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, taskId string) error {
-	err := ChangeState(nats_server, taskId, task.FINISHED_ERRORS)
+func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, t task.Task) error {
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.FINISHED_ERRORS)
 	if err != nil {
-		log.Println("Error when changing the state of", taskId, "to executing:", err)
+		log.Println("Error when changing the state of", t.TaskId.String(), "to executing:", err)
 		return err
 	}
 
 	return nil
 }
 
-func SetTaskStatusToFinished(nats_server *nats.Conn, taskId string) error {
-	err := ChangeState(nats_server, taskId, task.FINISHED)
+func SetTaskStatusToFinished(nats_server *nats.Conn, t task.Task) error {
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.FINISHED)
 	if err != nil {
-		log.Println("Error when changing the state of", taskId, "to finished:", err)
+		log.Println("Error when changing the state of", t.TaskId.String(), "to finished:", err)
 		return err
 	}
 
 	return nil
 }
 
-func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) error {
-	err := ChangeState(nats_server, taskId, task.PENDING)
+func SetTaskStatusToPending(nats_server *nats.Conn, t task.Task) error {
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.PENDING)
 	if err != nil {
-		log.Println("Error when changing the state of", taskId, "to pending:", err)
+		log.Println("Error when changing the state of", t.TaskId.String(), "to pending:", err)
 		return err
 	}
 
@@ -64,14 +64,14 @@ func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) error {
 func PostResult(nats_server *nats.Conn, result result.Result) {
 
 	bucket := result.TaskId.String()
-	err := CreateTaskBucket(nats_server, bucket)
+	err := store.CreateTaskBucket(nats_server, bucket)
 	if err != nil {
 		log.Println("Error when creating the bucket", result.TaskId.String(), ":", err)
 		return
 	}
 
 	for _, file := range result.Files {
-		err = StoreFileInBucket(nats_server, file, path.Base(file), bucket)
+		err = store.StoreFileInBucket(nats_server, file, path.Base(file), bucket)
 		// if err != nil {
 		// 	log.Println("Error when storing the file", file, ":", err)
 		// 	return
@@ -97,14 +97,16 @@ func CreateTask(context *gin.Context, nats_server *nats.Conn) {
 		log.Println(param)
 	}
 
+	log.Println(context.Request.Header)
+
 	task := task.Task{
 		TaskId:     uuid.New(),
-		UserMail:   context.Request.Header.Get("X-Forwarded-Email"),
+		UserId:     context.Request.Header.Get("X-Forwarded-User"),
 		RepoUrl:    requestBody.Url,
 		Parameters: requestBody.Parameters,
 	}
 
-	err := SetTaskStatusToPending(nats_server, task.TaskId.String())
+	err := SetTaskStatusToPending(nats_server, task)
 	if err != nil {
 		log.Println(err.Error())
 		context.JSON(http.StatusInternalServerError, "An internal error happened.")
@@ -133,7 +135,7 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 
 	log.Println("Received request to get result for task " + taskId)
 
-	GetResult(nats_server, taskId)
+	store.GetResult(nats_server, taskId)
 
 	//zip con los res.File
 
@@ -142,5 +144,40 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 	// filePath := "hola.txt"
 	// context.FileAttachment(filePath, "hola.txt")
 
-	context.IndentedJSON(http.StatusCreated, "ok")
+	context.IndentedJSON(http.StatusOK, "ok")
+}
+
+func GetTaskStatus(context *gin.Context, nats_server *nats.Conn) {
+
+	taskId := context.Request.URL.Query().Get(TASK_ID_PARAM)
+	if taskId == "" {
+		log.Println("Error: parameter taskId is missing")
+		context.IndentedJSON(http.StatusBadRequest, "Error: parameter taskId is missing")
+		return
+	}
+
+	userId := context.Request.Header.Get("X-Forwarded-User")
+
+	task_state, err := store.GetTaskStatus(nats_server, taskId, userId)
+	if err != nil {
+		context.IndentedJSON(http.StatusForbidden, "Error: no task with given ID")
+	}
+
+	context.IndentedJSON(http.StatusOK, task_state.String())
+}
+
+func GetAllTasks(context *gin.Context, nats_server *nats.Conn) {
+
+	userId := context.Request.Header.Get("X-Forwarded-User")
+
+	allTaskIds, _ := store.GetUserTasks(nats_server, userId)
+	// if err != nil {
+	// 	context.IndentedJSON(http.StatusForbidden, err.Error())
+	// }
+
+	if len(allTaskIds) == 0 {
+		context.IndentedJSON(http.StatusNoContent, allTaskIds)
+	}
+
+	context.IndentedJSON(http.StatusOK, allTaskIds)
 }
