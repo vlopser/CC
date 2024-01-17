@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,6 +43,59 @@ func ChangeState(nats_server *nats.Conn, idTask string, idUser string, status ta
 	}
 
 	return nil
+}
+
+func GetTaskState(nats_server *nats.Conn, idTask string, idUser string) (*task.Status, error) {
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return nil, err
+	}
+	user_bucket, err := js.KeyValue(idUser)
+	if err != nil {
+		log.Println("User bucket does not exist:", err.Error())
+		return nil, err
+	}
+
+	task_status, err := user_bucket.Get(idTask)
+	if err != nil {
+		log.Println("Task KV does not exist:", err.Error())
+		return nil, err
+	}
+
+	//Convert from []bytes to Status type
+	val, _ := strconv.Atoi(string(task_status.Value()))
+	res := task.Status(val)
+
+	return &res, nil
+
+}
+
+func GetAllTaskId(nats_server *nats.Conn, idUser string) ([]string, error) {
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return nil, err
+	}
+	user_bucket, err := js.KeyValue(idUser)
+	if err != nil {
+		log.Println("User bucket does not exist:", err.Error())
+		return nil, err
+	}
+
+	allTasks, _ := user_bucket.ListKeys()
+	// if err != nil {
+	// 	log.Println("")
+	// }
+
+	// allTaskIds := <-allTasks.Keys()
+
+	result := make([]string, 0)
+
+	for key := range allTasks.Keys() {
+		result = append(result, key)
+	}
+
+	return result, nil
+
 }
 
 func StoreFileInBucket(nats_server *nats.Conn, file_path string, file_name string, bucket_name string) error {

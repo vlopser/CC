@@ -146,3 +146,31 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 
 	context.IndentedJSON(http.StatusCreated, "ok")
 }
+
+func GetTaskStatus(context *gin.Context, nats_server *nats.Conn) {
+
+	taskId := context.Request.URL.Query().Get(TASK_ID_PARAM)
+	if taskId == "" {
+		log.Println("Error: parameter taskId is missing")
+		context.IndentedJSON(http.StatusBadRequest, "Error: parameter taskId is missing")
+		return
+	}
+
+	userId := context.Request.Header.Get("X-Forwarded-User")
+
+	task_state, err := GetTaskState(nats_server, taskId, userId)
+	if err != nil {
+		context.IndentedJSON(http.StatusForbidden, "Error: no task with given ID")
+	}
+
+	context.IndentedJSON(http.StatusCreated, task_state.String())
+}
+
+func GetAllTaskIds(context *gin.Context, nats_server *nats.Conn) {
+
+	userId := context.Request.Header.Get("X-Forwarded-User")
+
+	allTaskIds, _ := GetAllTaskId(nats_server, userId)
+
+	context.IndentedJSON(http.StatusCreated, allTaskIds)
+}
