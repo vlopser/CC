@@ -21,40 +21,40 @@ const (
 	TASK_ID_PARAM = "taskId"
 )
 
-func SetTaskStatusToExecuting(nats_server *nats.Conn, taskId string) error {
-	err := ChangeState(nats_server, taskId, task.EXECUTING)
+func SetTaskStatusToExecuting(nats_server *nats.Conn, t task.Task) error {
+	err := ChangeState(nats_server, t.TaskId.String(), t.UserId, task.EXECUTING)
 	if err != nil {
-		log.Println("Error when changing the state of", taskId, "to executing:", err)
+		log.Println("Error when changing the state of", t.TaskId.String(), "to executing:", err)
 		return err
 	}
 
 	return nil
 }
 
-func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, taskId string) error {
-	err := ChangeState(nats_server, taskId, task.FINISHED_ERRORS)
+func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, t task.Task) error {
+	err := ChangeState(nats_server, t.TaskId.String(), t.UserId, task.FINISHED_ERRORS)
 	if err != nil {
-		log.Println("Error when changing the state of", taskId, "to executing:", err)
+		log.Println("Error when changing the state of", t.TaskId.String(), "to executing:", err)
 		return err
 	}
 
 	return nil
 }
 
-func SetTaskStatusToFinished(nats_server *nats.Conn, taskId string) error {
-	err := ChangeState(nats_server, taskId, task.FINISHED)
+func SetTaskStatusToFinished(nats_server *nats.Conn, t task.Task) error {
+	err := ChangeState(nats_server, t.TaskId.String(), t.UserId, task.FINISHED)
 	if err != nil {
-		log.Println("Error when changing the state of", taskId, "to finished:", err)
+		log.Println("Error when changing the state of", t.TaskId.String(), "to finished:", err)
 		return err
 	}
 
 	return nil
 }
 
-func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) error {
-	err := ChangeState(nats_server, taskId, task.PENDING)
+func SetTaskStatusToPending(nats_server *nats.Conn, t task.Task) error {
+	err := ChangeState(nats_server, t.TaskId.String(), t.UserId, task.PENDING)
 	if err != nil {
-		log.Println("Error when changing the state of", taskId, "to pending:", err)
+		log.Println("Error when changing the state of", t.TaskId.String(), "to pending:", err)
 		return err
 	}
 
@@ -97,14 +97,16 @@ func CreateTask(context *gin.Context, nats_server *nats.Conn) {
 		log.Println(param)
 	}
 
+	log.Println(context.Request.Header)
+
 	task := task.Task{
 		TaskId:     uuid.New(),
-		UserMail:   context.Request.Header.Get("X-Forwarded-Email"),
+		UserId:     context.Request.Header.Get("X-Forwarded-User"),
 		RepoUrl:    requestBody.Url,
 		Parameters: requestBody.Parameters,
 	}
 
-	err := SetTaskStatusToPending(nats_server, task.TaskId.String())
+	err := SetTaskStatusToPending(nats_server, task)
 	if err != nil {
 		log.Println(err.Error())
 		context.JSON(http.StatusInternalServerError, "An internal error happened.")

@@ -14,12 +14,12 @@ const (
 )
 
 type Task struct {
-  TaskId     uuid.UUID `json:"TaskId"`
-  UserMail   string
+	TaskId     uuid.UUID `json:"TaskId"`
+	UserId     string
 	RepoUrl    string   `json:"repoUrl"`
-  Parameters []string `json:"parameters"`
-	Input      string //cambiar a RepoUrl
-  Status     Status   `json:"status"`
+	Parameters []string `json:"parameters"`
+	Input      string   //cambiar a RepoUrl
+	Status     Status   `json:"status"`
 }
 
 const (

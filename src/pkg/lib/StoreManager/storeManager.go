@@ -4,6 +4,7 @@ import (
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -16,24 +17,26 @@ const (
 	RESULTS_BUCKET = "results_bucket"
 )
 
-func ChangeState(nats_server *nats.Conn, idTask string, status task.Status) error {
+func ChangeState(nats_server *nats.Conn, idTask string, idUser string, status task.Status) error {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return err
 	}
 
-	status_bucket, err := js.KeyValue(STATUS_BUCKET)
+	user_bucket, err := js.KeyValue(idUser)
 	if err != nil {
-		status_bucket, err = js.CreateKeyValue(&nats.KeyValueConfig{
-			Bucket: STATUS_BUCKET,
+		log.Println(err.Error())
+		user_bucket, err = js.CreateKeyValue(&nats.KeyValueConfig{
+			Bucket: idUser,
 		})
 		if err != nil {
-			return nil
+			log.Println(err.Error())
+			return err
 		}
 		// return err
 	}
 
-	status_bucket.Put(idTask, []byte(fmt.Sprintf("%d", status)))
+	user_bucket.Put(idTask, []byte(fmt.Sprintf("%d", status)))
 	if err != nil {
 		return err
 	}
