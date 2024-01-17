@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"cc/pkg/models/task"
+	"cc/src/pkg/models/task"
 	"fmt"
 	"log"
 	"os"

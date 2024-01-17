@@ -1,19 +1,55 @@
 version: '3'
 
 services:
-  frontend:
-    build: 
-      context: frontend/
+  debian-base:
+    build:
+      context: docker/
       dockerfile: Dockerfile
+    image: debian-base:latest
+
+  frontend:
+    build:
+      context: docker/frontend/
+      dockerfile: Dockerfile
+    image: frontend:latest
+    # ports:
+    #   - "8080:8080"
+    environment:
+      NATS_SERVER_ADDRESS: nats://nats-server:4222
+    depends_on:
+      - debian-base
+      - nats-server
+      - oauth2-proxy
+
+  debian-worker:
+    build:
+      context: docker/worker
+      dockerfile: Dockerfile
+    image: worker:latest
+    environment:
+      NATS_SERVER_ADDRESS: nats://nats-server:4222
+    depends_on:
+      - debian-base
+      - nats-server
+
+  nats-server:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "--jetstream -m 8222" #Configurarlo mejor con un .conf
+    # volumes:
+    #   - ./nats-config.conf:/etc/nats-server/nats-server.conf
+
   oauth2-proxy:
     ports:
       - "4180:4180"
     image: bitnami/oauth2-proxy:latest
     command:
       - --http-address
-      - 0.0.0.0:4180 #localhost:4180
+      - 0.0.0.0:4180
     environment:
-      OAUTH2_PROXY_UPSTREAMS: "http://frontend"
+      OAUTH2_PROXY_UPSTREAMS: "http://frontend:8080"
       OAUTH2_PROXY_CLIENT_ID: 936638621086-ukfhb28p7pkbjup42pgvjq4br9ce0h86.apps.googleusercontent.com
       OAUTH2_PROXY_CLIENT_SECRET: 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
       OAUTH2_PROXY_COOKIE_SECRET: _-vsNPgMZKXBRGWutZsIgeyB9Dzx-4aRNQwfX-zuDyo=

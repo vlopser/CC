@@ -1,16 +1,16 @@
 package taskmanager
 
 import (
-	. "cc/pkg/lib/QueueManager"
-	. "cc/pkg/lib/StoreManager"
-	"cc/pkg/models/result"
-	"cc/pkg/models/task"
+	. "cc/src/pkg/lib/QueueManager"
+	. "cc/src/pkg/lib/StoreManager"
+	"cc/src/pkg/models/result"
+	"cc/src/pkg/models/task"
 	"log"
 	"path"
 
 	"github.com/nats-io/nats.go"
 
-	"cc/pkg/models/request"
+	"cc/src/pkg/models/request"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -21,36 +21,44 @@ const (
 	TASK_ID_PARAM = "taskId"
 )
 
-func SetTaskStatusToExecuting(nats_server *nats.Conn, taskId string) {
+func SetTaskStatusToExecuting(nats_server *nats.Conn, taskId string) error {
 	err := ChangeState(nats_server, taskId, task.EXECUTING)
 	if err != nil {
 		log.Println("Error when changing the state of", taskId, "to executing:", err)
-		return
+		return err
 	}
+
+	return nil
 }
 
-func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, taskId string) {
+func SetTaskStatusToFinishedWithErrors(nats_server *nats.Conn, taskId string) error {
 	err := ChangeState(nats_server, taskId, task.FINISHED_ERRORS)
 	if err != nil {
 		log.Println("Error when changing the state of", taskId, "to executing:", err)
-		return
+		return err
 	}
+
+	return nil
 }
 
-func SetTaskStatusToFinished(nats_server *nats.Conn, taskId string) {
+func SetTaskStatusToFinished(nats_server *nats.Conn, taskId string) error {
 	err := ChangeState(nats_server, taskId, task.FINISHED)
 	if err != nil {
 		log.Println("Error when changing the state of", taskId, "to finished:", err)
-		return
+		return err
 	}
+
+	return nil
 }
 
-func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) {
+func SetTaskStatusToPending(nats_server *nats.Conn, taskId string) error {
 	err := ChangeState(nats_server, taskId, task.PENDING)
 	if err != nil {
 		log.Println("Error when changing the state of", taskId, "to pending:", err)
-		return
+		return err
 	}
+
+	return nil
 }
 
 func PostResult(nats_server *nats.Conn, result result.Result) {
@@ -96,9 +104,19 @@ func CreateTask(context *gin.Context, nats_server *nats.Conn) {
 		Parameters: requestBody.Parameters,
 	}
 
-	EnqueueTask(task, nats_server)
+	err := SetTaskStatusToPending(nats_server, task.TaskId.String())
+	if err != nil {
+		log.Println(err.Error())
+		context.JSON(http.StatusInternalServerError, "An internal error happened.")
+		return
+	}
 
-	SetTaskStatusToPending(nats_server, task.TaskId.String())
+	err = EnqueueTask(task, nats_server)
+	if err != nil {
+		log.Println("Error enqueueing task", task.TaskId, ":", err.Error())
+		context.JSON(http.StatusInternalServerError, "An internal error happened.")
+		return
+	}
 
 	// todo llamar la libreria
 	context.IndentedJSON(http.StatusCreated, task.TaskId)

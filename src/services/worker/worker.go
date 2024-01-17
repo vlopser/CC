@@ -1,12 +1,12 @@
 package main
 
 import (
-	. "cc/pkg/lib/TaskManager"
-	"cc/services/worker/utils"
+	. "cc/src/pkg/lib/TaskManager"
+	"cc/src/services/worker/utils"
 	"context"
 
-	"cc/pkg/models/result"
-	"cc/pkg/models/task"
+	"cc/src/pkg/models/result"
+	"cc/src/pkg/models/task"
 	"fmt"
 	"log"
 	"os"
@@ -65,10 +65,10 @@ func executeTask(task_dir string) error {
 	stderr_file := utils.OpenFile(task_dir + task.RESULT_DIR + task.STDERR_FILE)
 	defer stderr_file.Close()
 
-	err := execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go mod tidy")
-	if err != nil {
-		return err
-	}
+	err := execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go mod download")
+	// if err != nil {  // Quizás no puede hacer go mod download porqeu no hay .mod, dejemos que go run decida si puede ejecutarse
+	// 	return err
+	// }
 
 	err = execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go run main.go")
 	if err != nil {
@@ -165,7 +165,9 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 
 func main() {
 
-	nats_server, err := nats.Connect(nats.DefaultURL)
+	time.Sleep(10 * time.Second)
+
+	nats_server, err := nats.Connect(os.Getenv("NATS_SERVER_ADDRESS")) //nats.DefaultURL
 	if err != nil {
 		log.Fatal(err)
 	}

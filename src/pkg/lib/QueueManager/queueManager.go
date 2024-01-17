@@ -1,7 +1,7 @@
 package queuemanager
 
 import (
-	"cc/pkg/models/task"
+	"cc/src/pkg/models/task"
 	"encoding/json"
 	"fmt"
 

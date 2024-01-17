@@ -1,8 +1,8 @@
 package storemanager
 
 import (
-	"cc/pkg/models/result"
-	"cc/pkg/models/task"
+	"cc/src/pkg/models/result"
+	"cc/src/pkg/models/task"
 	"fmt"
 	"os"
 	"time"
@@ -24,7 +24,13 @@ func ChangeState(nats_server *nats.Conn, idTask string, status task.Status) erro
 
 	status_bucket, err := js.KeyValue(STATUS_BUCKET)
 	if err != nil {
-		return err
+		status_bucket, err = js.CreateKeyValue(&nats.KeyValueConfig{
+			Bucket: STATUS_BUCKET,
+		})
+		if err != nil {
+			return nil
+		}
+		// return err
 	}
 
 	status_bucket.Put(idTask, []byte(fmt.Sprintf("%d", status)))
