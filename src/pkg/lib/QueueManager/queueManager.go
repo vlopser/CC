@@ -4,6 +4,7 @@ import (
 	"cc/src/pkg/models/task"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/nats-io/nats.go"
 )
@@ -17,11 +18,13 @@ func EnqueueTask(task task.Task, nats_server *nats.Conn) error {
 
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
+		log.Println("Error masrhaling task", task.TaskId, ":", err.Error())
 		return err
 	}
 
 	err = nats_server.Publish(REQUEST_QUEUE, taskJSON)
 	if err != nil {
+		log.Println("Error enqueueing task", task.TaskId, ":", err.Error())
 		return err
 	}
 

@@ -66,7 +66,7 @@ func executeTask(task_dir string) error {
 	defer stderr_file.Close()
 
 	err := execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go mod download")
-	// if err != nil {  // Quizás no puede hacer go mod download porqeu no hay .mod, dejemos que go run decida si puede ejecutarse
+	// if err != nil {  // Quizás no puede hacer go mod download porque no hay .mod, dejemos que go run decida si puede ejecutarse
 	// 	return err
 	// }
 
@@ -153,14 +153,6 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 
 	SetTaskStatusToFinished(nats_server, t)
 	utils.CleanDirectory(t.TaskId.String()) //Clean all tmp directories created for the task
-
-	//CODIGO DEL FRONTEND
-	// result, err := GetResult(nats_server, t.TaskId.String())
-	// if err != nil {
-	// 	log.Println("Error when storing the result of", t.TaskId, ":", err)
-	// 	return
-	// }
-	// println("Solucion en ", result.Files)
 }
 
 func main() {
