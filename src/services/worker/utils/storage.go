@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/go-git/go-git/v5"
 )
 
 func CreateTaskDirectory(task_id string) error {
@@ -33,12 +35,16 @@ func CleanDirectory(root_dir string) {
 	}
 }
 
-func CreateErrorFile(task_id string, error_msg string) string {
-	file_errors := OpenFile(task_id + task.RESULT_DIR + task.ERROR_FILE)
+func CreateErrorFile(task_id string, error_msg string) (string, error) {
+	file_errors, err := OpenFile(task_id + task.RESULT_DIR + task.ERROR_FILE)
+	if err != nil {
+		fmt.Println("Unable to open file in '", task_id+task.RESULT_DIR+task.ERROR_FILE, "':", err)
+		return "", err
+	}
 	defer file_errors.Close()
 	file_errors.WriteString(error_msg)
 
-	return file_errors.Name()
+	return file_errors.Name(), nil
 }
 
 func IsFileEmpty(file *os.File) (bool, error) {
@@ -51,14 +57,13 @@ func IsFileEmpty(file *os.File) (bool, error) {
 	return fileInfo.Size() == 0, nil
 }
 
-func OpenFile(file_path string) *os.File {
+func OpenFile(file_path string) (*os.File, error) {
 	file, err := os.OpenFile(file_path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
-		fmt.Println("Error al abrir el archivo:", err)
-		// return err
+		return nil, err
 	}
 
-	return file
+	return file, nil
 }
 
 func CheckDirectoryExists(dir string) error {
@@ -71,6 +76,23 @@ func CheckDirectoryExists(dir string) error {
 			return err
 			// return err
 		}
+	}
+
+	return nil
+}
+
+func CloneRepo(repo_url string, task_dir string) error {
+
+	//git.Plain cant clone if dir already exists, so delete it if so
+	CheckDirectoryExists(task_dir + task.REPO_DIR)
+
+	_, err := git.PlainClone(task_dir+task.REPO_DIR, false, &git.CloneOptions{
+		URL:      repo_url,
+		Progress: os.Stdout,
+	})
+	if err != nil {
+		fmt.Println("Error doing git clone:", err)
+		return err
 	}
 
 	return nil

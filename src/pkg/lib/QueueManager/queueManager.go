@@ -4,6 +4,7 @@ import (
 	"cc/src/pkg/models/task"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/nats-io/nats.go"
 )
@@ -17,19 +18,21 @@ func EnqueueTask(task task.Task, nats_server *nats.Conn) error {
 
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
+		log.Println("Error masrhaling task", task.TaskId, ":", err.Error())
 		return err
 	}
 
 	err = nats_server.Publish(REQUEST_QUEUE, taskJSON)
 	if err != nil {
+		log.Println("Error enqueueing task", task.TaskId, ":", err.Error())
 		return err
 	}
 
 	return nil
 }
 
-func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.Conn)) {
-	nats_server.QueueSubscribe(
+func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.Conn)) error {
+	_, err := nats_server.QueueSubscribe(
 		REQUEST_QUEUE,
 		WORKERS_GROUP,
 		func(msg *nats.Msg) {
@@ -45,4 +48,11 @@ func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.C
 			callback(task, nats_server)
 
 		})
+	if err != nil {
+		log.Println("Error when subscribing queue:", err.Error())
+		return err
+	}
+
+	return nil
+
 }

@@ -33,9 +33,9 @@ func main() {
 	router.GET("/helloWorld", func(ctx *gin.Context) { ctx.IndentedJSON(http.StatusCreated, "Hola Mundo") })
 
 	//Para obtener los datos
-	router.GET("/getResult", func(ctx *gin.Context) { GetTaskResult(ctx, nats_server) })
+	router.GET("/getTaskResult", func(ctx *gin.Context) { GetTaskResult(ctx, nats_server) })
 	//Para agregar datos
-	router.POST("/createTask", func(ctx *gin.Context) { CreateTask(ctx, nats_server) })
+	router.POST("/createTask", func(ctx *gin.Context) { PostTask(ctx, nats_server) })
 
 	router.GET("/getTaskStatus", func(ctx *gin.Context) { GetTaskStatus(ctx, nats_server) })
 
