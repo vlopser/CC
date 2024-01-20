@@ -176,6 +176,7 @@ func ReceiveTasks(nats_server *nats.Conn, handleFunc func(task.Task, *nats.Conn)
 	}
 }
 
+// Check PostTask request is valid
 func checkPostTask(context *gin.Context, nats_server *nats.Conn, requestBody *request.PostTaskBody) bool {
 	// var requestBody request.PostTaskBody
 	if err := context.ShouldBindJSON(&requestBody); err != nil {
@@ -193,13 +194,6 @@ func checkPostTask(context *gin.Context, nats_server *nats.Conn, requestBody *re
 	}
 
 	user_id := context.Request.Header.Get("X-Forwarded-User")
-
-	// task := task.Task{
-	// 	TaskId:     uuid.New(),
-	// 	UserId:     context.Request.Header.Get("X-Forwarded-User"),
-	// 	RepoUrl:    requestBody.Url,
-	// 	Parameters: requestBody.Parameters,
-	// }
 
 	user_tasks, err := store.GetUserTasks(nats_server, user_id)
 	switch err {
@@ -237,19 +231,6 @@ func PostTask(context *gin.Context, nats_server *nats.Conn) {
 	if !checkPostTask(context, nats_server, &requestBody) {
 		return
 	}
-	// if err := context.ShouldBindJSON(&requestBody); err != nil {
-	// 	context.JSON(http.StatusBadRequest, gin.H{"error": "Request must have 'url' and 'parameters' parameters."})
-	// 	return
-	// }
-
-	// if requestBody.Parameters == nil {
-	// 	context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter 'parameters' is missing."})
-	// 	return
-	// }
-	// if requestBody.Url == "" {
-	// 	context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter 'url' is missing."})
-	// 	return
-	// }
 
 	task := task.Task{
 		TaskId:     uuid.New(),
@@ -257,34 +238,6 @@ func PostTask(context *gin.Context, nats_server *nats.Conn) {
 		RepoUrl:    requestBody.Url,
 		Parameters: requestBody.Parameters,
 	}
-
-	// user_tasks, err := store.GetUserTasks(nats_server, task.UserId)
-	// switch err {
-	// case nil:
-	// 	break
-
-	// case errors.ErrUserNotFound:
-	// 	context.JSON(http.StatusOK, gin.H{"data": []string{}})
-	// 	return
-
-	// case errors.ErrUserInvalid:
-	// 	context.JSON(http.StatusUnauthorized, gin.H{"error": "User ID is invalid."})
-	// 	return
-
-	// default:
-	// 	context.JSON(http.StatusInternalServerError, gin.H{"error": "An unexpected error has happened."})
-	// 	return
-	// }
-
-	// max_requests_per_client, err := strconv.Atoi(os.Getenv("MAX_REQUESTS_PER_CLIENT"))
-	// if err != nil {
-	// 	context.JSON(http.StatusInternalServerError, gin.H{"error": "An internal error happened."})
-	// 	return
-	// }
-	// if len(user_tasks) == max_requests_per_client {
-	// 	context.JSON(http.StatusUnauthorized, gin.H{"error": "You already have the maximum number of requests allowed per client (" + os.Getenv("MAX_REQUESTS_PER_CLIENT") + ")."})
-	// 	return
-	// }
 
 	err := SetTaskStatusToPending(nats_server, task)
 	switch err {
