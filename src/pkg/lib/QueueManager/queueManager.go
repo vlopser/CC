@@ -31,8 +31,8 @@ func EnqueueTask(task task.Task, nats_server *nats.Conn) error {
 	return nil
 }
 
-func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.Conn)) {
-	nats_server.QueueSubscribe(
+func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.Conn)) error {
+	_, err := nats_server.QueueSubscribe(
 		REQUEST_QUEUE,
 		WORKERS_GROUP,
 		func(msg *nats.Msg) {
@@ -48,4 +48,11 @@ func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.C
 			callback(task, nats_server)
 
 		})
+	if err != nil {
+		log.Println("Error when subscribing queue:", err.Error())
+		return err
+	}
+
+	return nil
+
 }

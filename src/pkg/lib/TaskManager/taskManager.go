@@ -7,23 +7,68 @@ import (
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
 	"log"
+	"os"
 	"path"
+	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 
 	"cc/src/pkg/models/request"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 const (
 	TASK_ID_PARAM = "taskId"
 )
 
+/************************ TASK STATUS ************************/
+
+func GetTaskStatus(context *gin.Context, nats_server *nats.Conn) {
+
+	taskId := context.Request.URL.Query().Get(TASK_ID_PARAM)
+	if taskId == "" {
+		context.JSON(http.StatusBadRequest, "Error: parameter taskId is missing")
+		return
+	}
+
+	userId := context.Request.Header.Get("X-Forwarded-User")
+
+	task_state, err := store.GetTaskStatus(nats_server, taskId, userId)
+	switch err {
+	case nil:
+		break
+
+	case errors.ErrUserNotFound, errors.ErrTaskNotFound:
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Given task does not exist."})
+		return
+
+	case errors.ErrUserInvalid:
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "User ID is invalid."})
+		return
+
+	default:
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "An unexpected error has happened."})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"data": task_state.String()})
+}
+
 func SetTaskStatusToExecuting(nats_server *nats.Conn, t task.Task) error {
 	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.EXECUTING)
+	if err != nil {
+		log.Println("Error when changing the state of", t.TaskId.String(), "to executing:", err)
+		return err
+	}
+
+	return nil
+}
+
+func SetTaskStatusToUnexpectedError(nats_server *nats.Conn, t task.Task) error {
+	err := store.SetTaskStatus(nats_server, t.UserId, t.TaskId.String(), task.UNEXPECTED_ERROR)
 	if err != nil {
 		log.Println("Error when changing the state of", t.TaskId.String(), "to executing:", err)
 		return err
@@ -62,13 +107,15 @@ func SetTaskStatusToPending(nats_server *nats.Conn, t task.Task) error {
 	return nil
 }
 
-func PostResult(nats_server *nats.Conn, result result.Result) {
+/************************ TASK RESULTS ************************/
+
+func CreateTaskResult(nats_server *nats.Conn, result result.Result) error {
 
 	bucket := result.TaskId.String()
 	err := store.CreateTaskBucket(nats_server, bucket)
 	if err != nil {
 		log.Println("Error when creating the bucket", result.TaskId.String(), ":", err)
-		return
+		return err
 	}
 
 	for _, file := range result.Files {
@@ -78,59 +125,8 @@ func PostResult(nats_server *nats.Conn, result result.Result) {
 		// 	return
 		// }
 	}
-}
 
-func GetTasks(nats_server *nats.Conn, handleFunc func(task.Task, *nats.Conn)) {
-	SubscribeQueueTask(nats_server, handleFunc)
-}
-
-func CreateTask(context *gin.Context, nats_server *nats.Conn) {
-
-	var requestBody request.PostTaskBody
-	if err := context.ShouldBindJSON(&requestBody); err != nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if requestBody.Parameters == nil {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter 'parameters' is missing."})
-		return
-	}
-	if requestBody.Url == "" {
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter 'url' is missing."})
-		return
-	}
-
-	task := task.Task{
-		TaskId:     uuid.New(),
-		UserId:     context.Request.Header.Get("X-Forwarded-User"),
-		RepoUrl:    requestBody.Url,
-		Parameters: requestBody.Parameters,
-	}
-
-	err := SetTaskStatusToPending(nats_server, task)
-	switch err {
-	case nil:
-		break
-	case errors.ErrUserInvalid:
-		context.JSON(http.StatusUnauthorized, gin.H{"error": "User ID is invalid."})
-		return
-	case errors.ErrTaskInvalid:
-		context.JSON(http.StatusUnauthorized, gin.H{"error": "Task ID is invalid."})
-		return
-	default:
-		context.JSON(http.StatusInternalServerError, gin.H{"error": "An internal error happened."})
-		return
-	}
-
-	err = EnqueueTask(task, nats_server)
-	if err != nil {
-		context.JSON(http.StatusInternalServerError, "An internal error happened.")
-		return
-	}
-
-	// todo llamar la libreria
-	context.JSON(http.StatusCreated, gin.H{"data": task.TaskId})
+	return nil
 }
 
 func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
@@ -168,38 +164,151 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 	// filePath := "hola.txt"
 	// context.FileAttachment(filePath, "hola.txt")
 
-	context.IndentedJSON(http.StatusOK, "ok")
+	context.JSON(http.StatusOK, gin.H{"data": "ok"})
 }
 
-func GetTaskStatus(context *gin.Context, nats_server *nats.Conn) {
+/************************ TASKS ************************/
 
-	taskId := context.Request.URL.Query().Get(TASK_ID_PARAM)
-	if taskId == "" {
-		context.JSON(http.StatusBadRequest, "Error: parameter taskId is missing")
-		return
+func ReceiveTasks(nats_server *nats.Conn, handleFunc func(task.Task, *nats.Conn)) {
+	err := SubscribeQueueTask(nats_server, handleFunc)
+	if err != nil {
+		log.Fatal("Unable to receive tasks. Aborting...")
+	}
+}
+
+func checkPostTask(context *gin.Context, nats_server *nats.Conn, requestBody *request.PostTaskBody) bool {
+	// var requestBody request.PostTaskBody
+	if err := context.ShouldBindJSON(&requestBody); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Request must have 'url' and 'parameters' parameters."})
+		return false
 	}
 
-	userId := context.Request.Header.Get("X-Forwarded-User")
+	if requestBody.Parameters == nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter 'parameters' is missing."})
+		return false
+	}
+	if requestBody.Url == "" {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter 'url' is missing."})
+		return false
+	}
 
-	task_state, err := store.GetTaskStatus(nats_server, taskId, userId)
+	user_id := context.Request.Header.Get("X-Forwarded-User")
+
+	// task := task.Task{
+	// 	TaskId:     uuid.New(),
+	// 	UserId:     context.Request.Header.Get("X-Forwarded-User"),
+	// 	RepoUrl:    requestBody.Url,
+	// 	Parameters: requestBody.Parameters,
+	// }
+
+	user_tasks, err := store.GetUserTasks(nats_server, user_id)
 	switch err {
 	case nil:
 		break
 
-	case errors.ErrUserNotFound, errors.ErrTaskNotFound:
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Given task does not exist."})
-		return
+	case errors.ErrUserNotFound: //User has no tasks
+		break
 
 	case errors.ErrUserInvalid:
 		context.JSON(http.StatusUnauthorized, gin.H{"error": "User ID is invalid."})
-		return
+		return false
 
 	default:
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "An unexpected error has happened."})
+		return false
+	}
+
+	max_requests_per_client, err := strconv.Atoi(os.Getenv("MAX_REQUESTS_PER_CLIENT"))
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "An internal error happened."})
+		return false
+	}
+	if len(user_tasks) == max_requests_per_client {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "You already have the maximum number of requests allowed per client (" + os.Getenv("MAX_REQUESTS_PER_CLIENT") + ")."})
+		return false
+	}
+
+	return true
+}
+
+func PostTask(context *gin.Context, nats_server *nats.Conn) {
+
+	var requestBody request.PostTaskBody
+	if !checkPostTask(context, nats_server, &requestBody) {
+		return
+	}
+	// if err := context.ShouldBindJSON(&requestBody); err != nil {
+	// 	context.JSON(http.StatusBadRequest, gin.H{"error": "Request must have 'url' and 'parameters' parameters."})
+	// 	return
+	// }
+
+	// if requestBody.Parameters == nil {
+	// 	context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter 'parameters' is missing."})
+	// 	return
+	// }
+	// if requestBody.Url == "" {
+	// 	context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter 'url' is missing."})
+	// 	return
+	// }
+
+	task := task.Task{
+		TaskId:     uuid.New(),
+		UserId:     context.Request.Header.Get("X-Forwarded-User"),
+		RepoUrl:    requestBody.Url,
+		Parameters: requestBody.Parameters,
+	}
+
+	// user_tasks, err := store.GetUserTasks(nats_server, task.UserId)
+	// switch err {
+	// case nil:
+	// 	break
+
+	// case errors.ErrUserNotFound:
+	// 	context.JSON(http.StatusOK, gin.H{"data": []string{}})
+	// 	return
+
+	// case errors.ErrUserInvalid:
+	// 	context.JSON(http.StatusUnauthorized, gin.H{"error": "User ID is invalid."})
+	// 	return
+
+	// default:
+	// 	context.JSON(http.StatusInternalServerError, gin.H{"error": "An unexpected error has happened."})
+	// 	return
+	// }
+
+	// max_requests_per_client, err := strconv.Atoi(os.Getenv("MAX_REQUESTS_PER_CLIENT"))
+	// if err != nil {
+	// 	context.JSON(http.StatusInternalServerError, gin.H{"error": "An internal error happened."})
+	// 	return
+	// }
+	// if len(user_tasks) == max_requests_per_client {
+	// 	context.JSON(http.StatusUnauthorized, gin.H{"error": "You already have the maximum number of requests allowed per client (" + os.Getenv("MAX_REQUESTS_PER_CLIENT") + ")."})
+	// 	return
+	// }
+
+	err := SetTaskStatusToPending(nats_server, task)
+	switch err {
+	case nil:
+		break
+	case errors.ErrUserInvalid:
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "User ID is invalid."})
+		return
+	case errors.ErrTaskInvalid:
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "Task ID is invalid."})
+		return
+	default:
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "An internal error happened."})
 		return
 	}
 
-	context.JSON(http.StatusOK, gin.H{"data": task_state.String()})
+	err = EnqueueTask(task, nats_server)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, "An internal error happened.")
+		return
+	}
+
+	// todo llamar la libreria
+	context.JSON(http.StatusCreated, gin.H{"data": task.TaskId})
 }
 
 func GetAllTasks(context *gin.Context, nats_server *nats.Conn) {

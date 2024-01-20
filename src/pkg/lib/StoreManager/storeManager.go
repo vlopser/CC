@@ -184,7 +184,14 @@ func CreateTaskBucket(nats_server *nats.Conn, task_id string) error {
 		TTL:      TTL_TASK, //Time until bucket is automatically deleted
 		MaxBytes: 10000,    //Only keep 10 MB maximum
 	})
-	if err != nil {
+	switch err {
+	case nil:
+		break
+	case nats.ErrInvalidStoreName:
+		log.Println("Task ID is invalid:", err.Error())
+		return errors.ErrTaskInvalid
+	default:
+		log.Println("Unexpected error:", err.Error())
 		return err
 	}
 

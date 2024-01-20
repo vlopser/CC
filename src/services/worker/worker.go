@@ -14,27 +14,29 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-git/go-git/v5"
 	"github.com/nats-io/nats.go"
 )
 
+const (
+	MAX_TIME_EXECUTION = 3 * time.Second
+)
+
 func waitForTasks(nats_server *nats.Conn, wg *sync.WaitGroup) {
-	GetTasks(nats_server, handleRequest)
+	ReceiveTasks(nats_server, handleRequest)
 
 	wg.Add(1)
 
-	log.Println("Waiting for request. (Presiona Ctrl+C para salir)")
+	log.Println("Waiting for requests. (Presiona Ctrl+C para salir)")
 
 	wg.Wait()
 	time.Sleep(1 * time.Second)
 }
 
 func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, command string) error {
-	// Add command executed to files
 	stdout_file.WriteString(">> " + command + "\n")
 	stderr_file.WriteString(">> " + command + "\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), MAX_TIME_EXECUTION)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
@@ -50,7 +52,7 @@ func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, co
 
 	err := cmd.Run()
 	if err != nil {
-		fmt.Println("Error when executing `", command, "':", err)
+		fmt.Println("Error when executing '", command, "':", err)
 		return err
 	}
 
@@ -59,10 +61,10 @@ func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, co
 
 func executeTask(task_dir string) error {
 
-	stdout_file := utils.OpenFile(task_dir + task.RESULT_DIR + task.STDOUT_FILE)
+	stdout_file, _ := utils.OpenFile(task_dir + task.RESULT_DIR + task.STDOUT_FILE)
 	defer stdout_file.Close()
 
-	stderr_file := utils.OpenFile(task_dir + task.RESULT_DIR + task.STDERR_FILE)
+	stderr_file, _ := utils.OpenFile(task_dir + task.RESULT_DIR + task.STDERR_FILE)
 	defer stderr_file.Close()
 
 	err := execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go mod download")
@@ -78,42 +80,35 @@ func executeTask(task_dir string) error {
 	return nil
 }
 
-func cloneRepo(repo_url string, task_dir string) error {
-
-	//git.Plain cant clone if dir already exists, so deletes it if so
-	err := utils.CheckDirectoryExists(task_dir + task.REPO_DIR)
-
-	_, err = git.PlainClone(task_dir+task.REPO_DIR, false, &git.CloneOptions{
-		URL:      repo_url,
-		Progress: os.Stdout,
-	})
-	if err != nil {
-		fmt.Println("Error doing git clone:", err)
-		return err
-	}
-
-	return nil
-}
-
 func handleRequest(t task.Task, nats_server *nats.Conn) {
 	log.Println("Request", t.TaskId.String(), "received!")
 
-	utils.CreateTaskDirectory(t.TaskId.String())
-
-	err := cloneRepo(t.RepoUrl, t.TaskId.String())
+	err := utils.CreateTaskDirectory(t.TaskId.String())
 	if err != nil {
-		error_file := utils.CreateErrorFile(t.TaskId.String(), "Error cloning repo: "+err.Error())
-		PostResult(
-			nats_server,
-			result.Result{
-				TaskId: t.TaskId,
-				Files:  []string{error_file},
-			},
-		)
-		SetTaskStatusToFinishedWithErrors(nats_server, t)
-		utils.CleanDirectory(t.TaskId.String())
+		log.Println("Error when creating repo directory at '", t.TaskId.String(), "':", err.Error())
 		return
 	}
+
+	err = utils.CloneRepo(t.RepoUrl, t.TaskId.String())
+	if err != nil {
+		error_file, err := utils.CreateErrorFile(t.TaskId.String(), "Error cloning repo: "+err.Error())
+		if err != nil {
+			log.Println("Unable to create error file for task '", t.TaskId.String(), "':")
+			SetTaskStatusToUnexpectedError(nats_server, t)
+			return
+		}
+
+		err = CreateTaskResult(nats_server, result.Result{TaskId: t.TaskId, Files: []string{error_file}})
+		if err != nil {
+			log.Println("Unable to post result for task '", t.TaskId.String(), "':")
+			SetTaskStatusToUnexpectedError(nats_server, t)
+			return
+		}
+
+		SetTaskStatusToFinishedWithErrors(nats_server, t)
+		return
+	}
+	defer utils.CleanDirectory(t.TaskId.String()) // Clean all tmp directories created for the task
 
 	SetTaskStatusToExecuting(nats_server, t)
 
@@ -122,8 +117,14 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 	end := time.Now()
 
 	if err != nil {
-		error_file := utils.CreateErrorFile(t.TaskId.String(), "Error executing task: "+err.Error())
-		PostResult(
+		error_file, err := utils.CreateErrorFile(t.TaskId.String(), "Error executing task: "+err.Error())
+		if err != nil {
+			log.Println("Unable to create error file for task '", t.TaskId.String(), "':")
+			SetTaskStatusToUnexpectedError(nats_server, t)
+			return
+		}
+
+		err = CreateTaskResult(
 			nats_server,
 			result.Result{
 				TaskId: t.TaskId,
@@ -134,12 +135,17 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 				},
 			},
 		)
+		if err != nil {
+			log.Println("Unable to post result for task '", t.TaskId.String(), "':")
+			SetTaskStatusToUnexpectedError(nats_server, t)
+			return
+		}
+
 		SetTaskStatusToFinishedWithErrors(nats_server, t)
-		utils.CleanDirectory(t.TaskId.String())
 		return
 	}
 
-	PostResult(
+	CreateTaskResult(
 		nats_server,
 		result.Result{
 			TaskId: t.TaskId,
@@ -150,16 +156,20 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 			TimeElapsed: end.Sub(init),
 		},
 	)
+	if err != nil {
+		log.Println("Unable to post result for task '", t.TaskId.String(), "':")
+		SetTaskStatusToUnexpectedError(nats_server, t)
+		return
+	}
 
 	SetTaskStatusToFinished(nats_server, t)
-	utils.CleanDirectory(t.TaskId.String()) //Clean all tmp directories created for the task
 }
 
 func main() {
 
-	time.Sleep(10 * time.Second)
+	// time.Sleep(10 * time.Second)
 
-	nats_server, err := nats.Connect(os.Getenv("NATS_SERVER_ADDRESS")) //nats.DefaultURL
+	nats_server, err := nats.Connect(os.Getenv("NATS_SERVER_ADDRESS"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -167,17 +177,6 @@ func main() {
 
 	wg := sync.WaitGroup{}
 	go utils.WaitForSigkill(&wg)
-
-	GetTasks(nats_server, handleRequest)
-
-	// Codigo frontend
-	// task := task.Task{
-	// 	TaskId: uuid.New(),
-	// 	RepoUrl:  "https://github.com/go-training/helloworld.git",
-	// 	Status: task.PENDING,
-	// }
-
-	// EnqueueTask(task, nats_server)
 
 	waitForTasks(nats_server, &wg)
 }

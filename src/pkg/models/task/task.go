@@ -7,10 +7,11 @@ import (
 type Status int
 
 const (
-	PENDING         Status = 100
-	EXECUTING       Status = 200
-	FINISHED        Status = 300
-	FINISHED_ERRORS Status = 400
+	PENDING          Status = 100
+	EXECUTING        Status = 200
+	FINISHED         Status = 300
+	FINISHED_ERRORS  Status = 400
+	UNEXPECTED_ERROR Status = 500
 )
 
 func (s Status) String() string {
@@ -23,6 +24,8 @@ func (s Status) String() string {
 		return "FINISHED"
 	case FINISHED_ERRORS:
 		return "FINISHED_WITH_ERRORS"
+	case UNEXPECTED_ERROR:
+		return "UNEXPECTED_ERROR"
 	}
 
 	return ""
