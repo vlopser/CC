@@ -40,6 +40,13 @@ func main() {
 	router.GET("/getTaskStatus", func(ctx *gin.Context) { GetTaskStatus(ctx, nats_server) })
 
 	router.GET("/getAllTasks", func(ctx *gin.Context) { GetAllTasks(ctx, nats_server) })
+
+	router.GET("/metrics", func(c *gin.Context) {
+		// Specify the new URL to redirect to
+		newURL := "http://localhost:8080/metrics"
+		// Perform the redirection
+		c.Redirect(http.StatusFound, newURL)
+	})
 	//Ejecutar el servidor
 	router.Run("0.0.0.0:8080")
 }

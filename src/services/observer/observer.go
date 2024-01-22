@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gin-gonic/gin"
 	"github.com/nats-io/nats.go"
 	"io/ioutil"
 	"log"
@@ -14,6 +15,10 @@ var count int
 var lowerLimit = 200
 var upperLimit = 1000
 var workers = 1
+
+const (
+	REQUEST_QUEUE = "request_queue"
+)
 
 type body struct {
 	ServerId     string         `json:"server_id"`
@@ -40,7 +45,7 @@ type accountStatz struct {
 var running = false
 
 func scheduledThread() {
-	ticker1 := time.NewTicker(time.Second * 5)
+	ticker1 := time.NewTicker(time.Second * 2)
 	for {
 		select {
 		case <-ticker1.C:
@@ -85,30 +90,22 @@ func checkQueue() {
 	}
 }
 
+func getMetrics(ctx *gin.Context) {
+	//endpoint := "http://localhost:8222/accstatz"
+	// todo put other metrics that you consider important
+
+}
+
 func main() {
-	/*
-		// Replace "nats://your-nats-server-url:4222" with the actual URL of your NATS server
-		natsURL := "nats://your-nats-server-url:4222"
-		queueName := "your_queue_name"
+	router := gin.Default()
 
-		nc, err := nats.Connect(natsURL)
-		if err != nil {
-			log.Fatalf("Error connecting to NATS server: %v", err)
-		}
-		defer nc.Close()
-
-		queueInfo, err := nc.Request(fmt.Sprintf("nats.queue.%s", queueName), nil, time.Second)
-		if err != nil {
-			log.Fatalf("Error requesting queue info: %v", err)
-		}
-
-		fmt.Printf("Queue Info: %s\n", queueInfo.Data)
-	*/
-	nats_server, err := nats.Connect(os.Getenv("NATS_SERVER_ADDRESS")) //nats.DefaultURL
+	natsServer, err := nats.Connect(os.Getenv("NATS_SERVER_ADDRESS")) //nats.DefaultURL
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer nats_server.Close()
+	defer natsServer.Close()
 
+	router.POST("/metrics", func(ctx *gin.Context) { getMetrics(ctx) })
+	router.Run(":8080")
 	go scheduledThread()
 }

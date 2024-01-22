@@ -260,7 +260,6 @@ func PostTask(context *gin.Context, nats_server *nats.Conn) {
 		return
 	}
 
-	// todo llamar la libreria
 	context.JSON(http.StatusCreated, gin.H{"data": task.TaskId})
 }
 
