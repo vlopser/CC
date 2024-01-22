@@ -4,6 +4,7 @@ import (
 	. "cc/src/pkg/lib/TaskManager"
 	"cc/src/services/worker/utils"
 	"context"
+	"strings"
 
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
@@ -18,7 +19,7 @@ import (
 )
 
 const (
-	MAX_TIME_EXECUTION = 3 * time.Second
+	MAX_TIME_EXECUTION = 10 * time.Second
 )
 
 func waitForTasks(nats_server *nats.Conn, wg *sync.WaitGroup) {
@@ -32,14 +33,16 @@ func waitForTasks(nats_server *nats.Conn, wg *sync.WaitGroup) {
 	time.Sleep(1 * time.Second)
 }
 
-func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, command string) error {
-	stdout_file.WriteString(">> " + command + "\n")
-	stderr_file.WriteString(">> " + command + "\n")
+func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, command string, args ...string) error {
+	command_with_args := command + " " + strings.Join(args, " ")
+
+	stdout_file.WriteString(">> " + command_with_args + "\n")
+	stderr_file.WriteString(">> " + command_with_args + "\n")
 
 	ctx, cancel := context.WithTimeout(context.Background(), MAX_TIME_EXECUTION)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "sh", "-c", command)
+	cmd := exec.CommandContext(ctx, "sh", "-c", command_with_args)
 
 	// cmd.SysProcAttr = &syscall.SysProcAttr{
 	// 	GidMappings: "grupo_sin_permisos",
@@ -59,7 +62,9 @@ func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, co
 	return nil
 }
 
-func executeTask(task_dir string) error {
+func executeTask(t task.Task) error {
+
+	task_dir := t.TaskId.String()
 
 	stdout_file, _ := utils.OpenFile(task_dir + task.RESULT_DIR + task.STDOUT_FILE)
 	defer stdout_file.Close()
@@ -72,7 +77,7 @@ func executeTask(task_dir string) error {
 	// 	return err
 	// }
 
-	err = execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go run main.go")
+	err = execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go run main.go", t.Parameters...)
 	if err != nil {
 		return err
 	}
@@ -113,7 +118,7 @@ func handleRequest(t task.Task, nats_server *nats.Conn) {
 	SetTaskStatusToExecuting(nats_server, t)
 
 	init := time.Now()
-	err = executeTask(t.TaskId.String())
+	err = executeTask(t)
 	end := time.Now()
 
 	if err != nil {
