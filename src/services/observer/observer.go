@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var count int
+var count = 0
 var lowerLimit = 200
 var upperLimit = 1000
 var workers = 1
@@ -45,7 +45,7 @@ type accountStatz struct {
 var running = false
 
 func scheduledThread() {
-	ticker1 := time.NewTicker(time.Second * 2)
+	ticker1 := time.NewTicker(time.Second * 1)
 	for {
 		select {
 		case <-ticker1.C:
@@ -73,16 +73,16 @@ func checkQueue() {
 	}
 	log.Println("Response is:\n", msg)
 
-	totalMsgs := msg.AccountStatz[0].Sent.Msgs + msg.AccountStatz[0].Received.Msgs - count
-	if workers > 1 && totalMsgs < lowerLimit {
-		log.Printf("Received/sent messages : %d", totalMsgs)
+	count -= msg.AccountStatz[0].Sent.Msgs + msg.AccountStatz[0].Received.Msgs
+	if workers > 1 && count < lowerLimit {
+		log.Printf("Received/sent messages in last 1s : %d", count)
 		log.Printf("Limit : %d", lowerLimit)
 		workers--
 		log.Printf("Reducing number of workers, n° workers : %d", workers)
 		upperLimit /= 2 * workers
-	} else if totalMsgs > upperLimit {
+	} else if count > upperLimit {
 		log.Println("Nats queue has exceeded current limit of sent/received messages")
-		log.Printf("Received/sent messages : %d", totalMsgs)
+		log.Printf("Received/sent messages in last 1s : %d", count)
 		log.Printf("Limit : %d", upperLimit)
 		workers++
 		log.Printf("Adding new worker, n° workers : %d", workers)
@@ -107,5 +107,6 @@ func main() {
 
 	router.POST("/metrics", func(ctx *gin.Context) { getMetrics(ctx) })
 	router.Run(":8080")
+
 	go scheduledThread()
 }
