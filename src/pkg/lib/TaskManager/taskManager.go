@@ -1,11 +1,13 @@
 package taskmanager
 
 import (
+	"bytes"
 	. "cc/src/pkg/lib/QueueManager"
 	store "cc/src/pkg/lib/StoreManager"
 	"cc/src/pkg/models/errors"
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -16,6 +18,8 @@ import (
 
 	"cc/src/pkg/models/request"
 	"net/http"
+
+	"archive/zip"
 
 	"github.com/gin-gonic/gin"
 )
@@ -157,14 +161,55 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 		context.JSON(http.StatusInternalServerError, "An internal error happened.")
 	}
 
-	//zip con los res.File
+	//Create a zip with result files
+	files := []string{"frontend_error.txt", "frontend_stderr.txt", "frontend_stdout.txt"}
+	outputZip := "frontend_logs.zip"
 
-	//context.FileAttachment(filePath, zip)
+	zipBuffer := new(bytes.Buffer)
+	zipWriter := zip.NewWriter(zipBuffer)
 
-	// filePath := "hola.txt"
-	// context.FileAttachment(filePath, "hola.txt")
-
-	context.JSON(http.StatusOK, gin.H{"data": "ok"})
+	for _, file := range files {
+		err := addFileToZip(zipWriter, file)
+		if err != nil {
+			log.Println("Error adding file to zip:", err)
+			return
+		}
+	}
+	zipWriter.Close()
+	context.Header("Content-Disposition", "attachment; filename="+outputZip)
+	context.Header("Content-Type", "application/zip")
+	context.Header("Content-Length", strconv.Itoa(zipBuffer.Len()))
+	context.Status(http.StatusOK)
+	context.Writer.Write(zipBuffer.Bytes())
+}
+func addFileToZip(zipWriter *zip.Writer, filename string) error {
+	fileToZip, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer fileToZip.Close()
+	// Get file information
+	fileInfo, err := fileToZip.Stat()
+	if err != nil {
+		return err
+	}
+	// Create file header zip
+	fileHeader, err := zip.FileInfoHeader(fileInfo)
+	if err != nil {
+		return err
+	}
+	fileHeader.Name = filename
+	// Creat new file in zip
+	fileInZip, err := zipWriter.CreateHeader(fileHeader)
+	if err != nil {
+		return err
+	}
+	// Copy the contents of the file to the new file in the zip
+	_, err = io.Copy(fileInZip, fileToZip)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /************************ TASKS ************************/
