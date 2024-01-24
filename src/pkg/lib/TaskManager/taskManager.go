@@ -7,7 +7,7 @@ import (
 	"cc/src/pkg/models/errors"
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
-	"io"
+	"cc/src/pkg/utils"
 	"log"
 	"os"
 	"path"
@@ -18,6 +18,7 @@ import (
 
 	"cc/src/pkg/models/request"
 	"net/http"
+	"net/url"
 
 	"archive/zip"
 
@@ -135,16 +136,12 @@ func CreateTaskResult(nats_server *nats.Conn, result result.Result) error {
 
 func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 	queryParams := context.Request.URL.Query()
-	taskId := queryParams.Get(TASK_ID_PARAM)
-	if taskId == "" {
-		log.Println("Error: parameter taskId is missing")
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter taskId is missing"})
+	if !checkGetTaskResult(context, nats_server, &queryParams) {
 		return
 	}
 
-	log.Println("Received request to get result for task " + taskId)
-
-	_, err := store.GetResult(nats_server, taskId)
+	taskId := queryParams.Get(TASK_ID_PARAM)
+	res, err := store.GetResult(nats_server, taskId)
 	switch err {
 	case nil:
 		break
@@ -154,62 +151,70 @@ func GetTaskResult(context *gin.Context, nats_server *nats.Conn) {
 		return
 
 	case errors.ErrTaskNotFound:
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Given task ID does not exist."})
+		context.JSON(http.StatusBadRequest, gin.H{"error": "No results for given task ID"})
 		return
 
 	default:
 		context.JSON(http.StatusInternalServerError, "An internal error happened.")
+		return
 	}
+	defer utils.RemoveAllFiles(res.Files)
 
 	//Create a zip with result files
-	files := []string{"frontend_error.txt", "frontend_stderr.txt", "frontend_stdout.txt"}
-	outputZip := "frontend_logs.zip"
+	outputZip := res.TaskId.String() + "_results.zip"
 
 	zipBuffer := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(zipBuffer)
 
-	for _, file := range files {
-		err := addFileToZip(zipWriter, file)
+	for _, file := range res.Files {
+		err := utils.AddFileToZip(zipWriter, file)
 		if err != nil {
 			log.Println("Error adding file to zip:", err)
+			context.JSON(http.StatusInternalServerError, "An internal error happened.")
 			return
 		}
 	}
 	zipWriter.Close()
+
 	context.Header("Content-Disposition", "attachment; filename="+outputZip)
 	context.Header("Content-Type", "application/zip")
 	context.Header("Content-Length", strconv.Itoa(zipBuffer.Len()))
 	context.Status(http.StatusOK)
 	context.Writer.Write(zipBuffer.Bytes())
 }
-func addFileToZip(zipWriter *zip.Writer, filename string) error {
-	fileToZip, err := os.Open(filename)
-	if err != nil {
-		return err
+
+func checkGetTaskResult(context *gin.Context, nats_server *nats.Conn, queryParams *url.Values) bool {
+	taskId := queryParams.Get(TASK_ID_PARAM)
+	if taskId == "" {
+		log.Println("Error: parameter taskId is missing")
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Parameter taskId is missing"})
+		return false
 	}
-	defer fileToZip.Close()
-	// Get file information
-	fileInfo, err := fileToZip.Stat()
-	if err != nil {
-		return err
+
+	userId := context.Request.Header.Get("X-Forwarded-User")
+
+	log.Println("Received request to get result for task " + taskId)
+
+	st, err := store.GetTaskStatus(nats_server, taskId, userId)
+	switch err {
+	case nil:
+		break
+
+	case errors.ErrUserNotFound, errors.ErrTaskNotFound:
+		context.JSON(http.StatusBadRequest, gin.H{"error": "User does not have a task with given ID."})
+		return false
+
+	case errors.ErrUserInvalid:
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "User ID is invalid."})
+		return false
 	}
-	// Create file header zip
-	fileHeader, err := zip.FileInfoHeader(fileInfo)
-	if err != nil {
-		return err
+
+	if *st == task.PENDING || *st == task.EXECUTING {
+		context.JSON(http.StatusOK, gin.H{"data": "Given task has not finished yet."})
+		return false
 	}
-	fileHeader.Name = filename
-	// Creat new file in zip
-	fileInZip, err := zipWriter.CreateHeader(fileHeader)
-	if err != nil {
-		return err
-	}
-	// Copy the contents of the file to the new file in the zip
-	_, err = io.Copy(fileInZip, fileToZip)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return true
 }
 
 /************************ TASKS ************************/
@@ -223,7 +228,6 @@ func ReceiveTasks(nats_server *nats.Conn, handleFunc func(task.Task, *nats.Conn)
 
 // Check PostTask request is valid
 func checkPostTask(context *gin.Context, nats_server *nats.Conn, requestBody *request.PostTaskBody) bool {
-	// var requestBody request.PostTaskBody
 	if err := context.ShouldBindJSON(&requestBody); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "Request must have 'url' and 'parameters' parameters."})
 		return false
@@ -240,12 +244,9 @@ func checkPostTask(context *gin.Context, nats_server *nats.Conn, requestBody *re
 
 	user_id := context.Request.Header.Get("X-Forwarded-User")
 
-	user_tasks, err := store.GetUserTasks(nats_server, user_id)
+	user_tasks, err := store.GetUserTasksId(nats_server, user_id)
 	switch err {
-	case nil:
-		break
-
-	case errors.ErrUserNotFound: //User has no tasks
+	case nil, errors.ErrUserNotFound: // No errors or user has no tasks
 		break
 
 	case errors.ErrUserInvalid:
@@ -313,7 +314,7 @@ func GetAllTasks(context *gin.Context, nats_server *nats.Conn) {
 
 	userId := context.Request.Header.Get("X-Forwarded-User")
 
-	allTaskIds, err := store.GetUserTasks(nats_server, userId)
+	allTaskIds, err := store.GetUserTasksId(nats_server, userId)
 	switch err {
 	case nil:
 		break

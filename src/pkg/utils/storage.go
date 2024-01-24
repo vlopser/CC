@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"archive/zip"
 	"cc/src/pkg/models/task"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
@@ -28,11 +30,22 @@ func CreateTaskDirectory(task_id string) error {
 }
 
 func CleanDirectory(root_dir string) {
-
 	err := os.RemoveAll(root_dir)
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func RemoveAllFiles(files []string) error {
+	for _, file := range files {
+		err := os.Remove(file)
+		if err != nil {
+			log.Println("Error removing file '", file, "':", err.Error())
+			return err
+		}
+	}
+
+	return nil
 }
 
 func CreateErrorFile(task_id string, error_msg string) (string, error) {
@@ -95,5 +108,35 @@ func CloneRepo(repo_url string, task_dir string) error {
 		return err
 	}
 
+	return nil
+}
+
+func AddFileToZip(zipWriter *zip.Writer, filename string) error {
+	fileToZip, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer fileToZip.Close()
+	// Get file information
+	fileInfo, err := fileToZip.Stat()
+	if err != nil {
+		return err
+	}
+	// Create file header zip
+	fileHeader, err := zip.FileInfoHeader(fileInfo)
+	if err != nil {
+		return err
+	}
+	fileHeader.Name = filename
+	// Creat new file in zip
+	fileInZip, err := zipWriter.CreateHeader(fileHeader)
+	if err != nil {
+		return err
+	}
+	// Copy the contents of the file to the new file in the zip
+	_, err = io.Copy(fileInZip, fileToZip)
+	if err != nil {
+		return err
+	}
 	return nil
 }

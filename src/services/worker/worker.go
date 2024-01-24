@@ -2,8 +2,9 @@ package main
 
 import (
 	. "cc/src/pkg/lib/TaskManager"
-	"cc/src/services/worker/utils"
+	"cc/src/pkg/utils"
 	"context"
+	"strconv"
 	"strings"
 
 	"cc/src/pkg/models/result"
@@ -19,7 +20,7 @@ import (
 )
 
 const (
-	MAX_TIME_EXECUTION = 10 * time.Second
+	MAX_TIME_EXECUTION = 20 * time.Second
 )
 
 func waitForTasks(nats_server *nats.Conn, wg *sync.WaitGroup) {
@@ -39,7 +40,11 @@ func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, co
 	stdout_file.WriteString(">> " + command_with_args + "\n")
 	stderr_file.WriteString(">> " + command_with_args + "\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), MAX_TIME_EXECUTION)
+	max_seconds_executing, err := strconv.Atoi(os.Getenv("MAX_SECONDS_EXECUTION_PER_REQUEST"))
+	if err != nil {
+		log.Fatal("Error using environment value MAX_SECONDS_EXECUTION_PER_REQUEST:", err.Error())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(max_seconds_executing)*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", command_with_args)
@@ -53,7 +58,7 @@ func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, co
 
 	cmd.Dir = root_dir
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		fmt.Println("Error when executing '", command, "':", err)
 		return err
