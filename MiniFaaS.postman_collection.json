@@ -1,0 +1,427 @@
+{
+	"info": {
+		"_postman_id": "f051e107-bb4b-46cd-bd53-6836acd28c76",
+		"name": "MiniFaaS",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30183726"
+	},
+	"item": [
+		{
+			"name": "createTask",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();\r",
+							"pm.environment.set(\"taskId\", jsonData.data);\r",
+							"\r",
+							"pm.test(\"Response status code is 201\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(201);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response has the required Content-Type header\", function () {\r",
+							"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Data field should not be empty\", function () {\r",
+							"  const responseData = pm.response.json();\r",
+							"  \r",
+							"  pm.expect(responseData.data).to.exist.and.to.not.be.empty;\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Verify that taskId is set and is a non-empty string\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(pm.environment.get(\"taskId\")).to.be.a('string').and.to.have.lengthOf.at.least(1, \"taskId should be a non-empty string\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"auth": {
+					"type": "oauth2",
+					"oauth2": [
+						{
+							"key": "accessTokenUrl",
+							"value": "https://accounts.google.com/o/oauth2/token",
+							"type": "string"
+						},
+						{
+							"key": "authUrl",
+							"value": "https://accounts.google.com/o/oauth2/auth",
+							"type": "string"
+						},
+						{
+							"key": "useBrowser",
+							"value": true,
+							"type": "boolean"
+						},
+						{
+							"key": "redirect_uri",
+							"value": "http://localhost:4180/oauth2/callback",
+							"type": "string"
+						},
+						{
+							"key": "grant_type",
+							"value": "authorization_code",
+							"type": "string"
+						},
+						{
+							"key": "tokenType",
+							"value": "",
+							"type": "string"
+						},
+						{
+							"key": "accessToken",
+							"type": "any"
+						},
+						{
+							"key": "client_authentication",
+							"value": "header",
+							"type": "string"
+						},
+						{
+							"key": "scope",
+							"value": "email",
+							"type": "string"
+						},
+						{
+							"key": "addTokenTo",
+							"value": "header",
+							"type": "string"
+						},
+						{
+							"key": "state",
+							"value": "",
+							"type": "string"
+						},
+						{
+							"key": "clientSecret",
+							"value": "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",
+							"type": "string"
+						},
+						{
+							"key": "clientId",
+							"value": "936638621086-ukfhb28p7pkbjup42pgvjq4br9ce0h86.apps.googleusercontent.com",
+							"type": "string"
+						},
+						{
+							"key": "tokenName",
+							"value": "myToken",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "_oauth2_proxy=6w3Jd174V77505d7R1gt33b95S4F-uCFWc_gz1edNDJwKT0_4IlnJoFulQ3aKTX3rd1SsZhysR1lO7xb3r1YZ1UbQIBKN6PVy1xelKIAf1RWaYPiOVfE2sdDQ6OgJP9jgvTEELtjZ4nbh7GYvyzmIPXTgbEgCG9MajgaB5obdY8zuhoBUIzhrP5j3b8DKQ0ixHdRa6Zs0U-gZIir22AqBZVsWKgqfd6Yhr5gvuzFKK280AQXv6d_hG0C9t8TDo6gaH6PcFlU4fRZdo2ms4i-DrtP9YagCG5yCJujahTLJ1gwBL1o2rPvBen_HMwBCOp5cxiVHk3egf2tu_1n3plKfDBjxZirZmDU3j84ss6m-yiu3XCl7VxNk3ZVSwWIYA5H8o9yZ39E1Q1AcTh3GF3Z0aC3uYKQjXlaotlwexdWIfwyk3qGuonVqDEKVyEmP0Nq3Z618gAa9ivNFiXzlsARSRQB3uuC4So9tuUwaEWUI74Lo76Y8Y_JiSLmFcWaK64gl9qCNiR4zdjaUOwzJkjTsrCNDoM5cs4LbOc0SsXpaJ2m0EKAJY3rXQ3qWDui8kmrSW_mq3Fq9Y3sFSArMi5njmXR9a4BzObxA6qeAfXT3Rv-JOu90C9ivv6i1SpUWuqL1eySNSsUG0-8dcHjeIFpzgEitkcxfRRcUdp64u6wdTwSII9Ae257ZHlJkKfgMRU8XdOpJOhE65Q6zJqQUu953RIe7aFHQHwT4kLSEblhGkyjAkvvsxXT__ApnvP0Zys2x04ChWubhDPzKqrkF2rTlwb-5P_MjUFWn7WJK9XaMCylzQy5XIsqVesBulCeD_-0Cs4FXgAVncny2a4AkeoWmGEi1VC1hvDSrjUg2F_V55VAiSPa6tdZ2WFG-5F8EyBYYxTEYCx9fak9Ru5gapVr17ujEzljmxOS5AFSqjjmci880owfZMT3b1Mfq2DnJR9dbBPyHvODSgBiRPiQqBe-YlXSlcNWiIq5czXlyaq-PytWLZFWAQVjiLnU44qsqwCyRLzpuVFkXW6PCPZ_06p0wdO_-lVoYBhB-ZMQWmk-YvwFwPuXsXp6SG__zZdIRBiUP0FqIU5vvYtDQN14H2wBQxfDP1exhDIcSqRRyd-JsSJALOBmF50IpIm7PWaxCRlqcOE_ZFqsWjZp4cD5ZcsRgBWTIuEyxyR9iNpgGY4CPz8pFpYMmuoJMmtV58SkK6UyUefTCwOEErDnHm1LN4phgONzdAltwFwdzZkS9lkOdZuL8tECyADk3R58iA8PUpXeA8LOPP7FQ9rXuC5yzP5FzcGFis5nhUYdyuX3KgPwNnAfwop9O-oMcKgi0o3_hd6IUy0yxUJL13wCXW8C1d2QpS-c-UJzeh_N-nZAcwIeS8RbKSredSsbo9JRuy4hPL3NuuXO5Zjjb9p4G2QQSIQpH288ijUCc0ru6ivF0Tsgf2XbtKGQqR7dQR8Po2eRbUk_bK4H3bdS8NB7Mkwg4gdKRPXMU-PGrjJ4AGgRpbXJUnWPqcr9b9xscCpb4A3vNmUMueDyyYQ-3zc3DZCshwQhFDOsjF6dAjpn16aI3uw-Lc5pXl4sRIZCNnaUqkNvVMChBltnqH9mc3Og_NUmb-QhJ1w7Y6HoLeBBn2GLv4jlhZp9TxeRaG7DSAnBNdcQuff1wwVhp7ly9-qyftxI7zcycM0HAhF8G3HhtNR5y2LOXbiuasKI4IUcdXxnpNoNlw==|1705932718|KW4UhW_8BSUmERjoL3VazcecnhSx8QIMQzVr04Y9j48=; Path=/; Expires=Mon, 29 Jan 2024 14:11:58 GMT;",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"url\" :  \"https://github.com/vlopser/test1.git\",\r\n    \"parameters\" : [\"1\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://{{hostname}}:4180/createTask",
+					"protocol": "http",
+					"host": [
+						"{{hostname}}"
+					],
+					"port": "4180",
+					"path": [
+						"createTask"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getResult",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response status code is 200\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response has the required Content-Type header\", function () {\r",
+							"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "_oauth2_proxy=6w3Jd174V77505d7R1gt33b95S4F-uCFWc_gz1edNDJwKT0_4IlnJoFulQ3aKTX3rd1SsZhysR1lO7xb3r1YZ1UbQIBKN6PVy1xelKIAf1RWaYPiOVfE2sdDQ6OgJP9jgvTEELtjZ4nbh7GYvyzmIPXTgbEgCG9MajgaB5obdY8zuhoBUIzhrP5j3b8DKQ0ixHdRa6Zs0U-gZIir22AqBZVsWKgqfd6Yhr5gvuzFKK280AQXv6d_hG0C9t8TDo6gaH6PcFlU4fRZdo2ms4i-DrtP9YagCG5yCJujahTLJ1gwBL1o2rPvBen_HMwBCOp5cxiVHk3egf2tu_1n3plKfDBjxZirZmDU3j84ss6m-yiu3XCl7VxNk3ZVSwWIYA5H8o9yZ39E1Q1AcTh3GF3Z0aC3uYKQjXlaotlwexdWIfwyk3qGuonVqDEKVyEmP0Nq3Z618gAa9ivNFiXzlsARSRQB3uuC4So9tuUwaEWUI74Lo76Y8Y_JiSLmFcWaK64gl9qCNiR4zdjaUOwzJkjTsrCNDoM5cs4LbOc0SsXpaJ2m0EKAJY3rXQ3qWDui8kmrSW_mq3Fq9Y3sFSArMi5njmXR9a4BzObxA6qeAfXT3Rv-JOu90C9ivv6i1SpUWuqL1eySNSsUG0-8dcHjeIFpzgEitkcxfRRcUdp64u6wdTwSII9Ae257ZHlJkKfgMRU8XdOpJOhE65Q6zJqQUu953RIe7aFHQHwT4kLSEblhGkyjAkvvsxXT__ApnvP0Zys2x04ChWubhDPzKqrkF2rTlwb-5P_MjUFWn7WJK9XaMCylzQy5XIsqVesBulCeD_-0Cs4FXgAVncny2a4AkeoWmGEi1VC1hvDSrjUg2F_V55VAiSPa6tdZ2WFG-5F8EyBYYxTEYCx9fak9Ru5gapVr17ujEzljmxOS5AFSqjjmci880owfZMT3b1Mfq2DnJR9dbBPyHvODSgBiRPiQqBe-YlXSlcNWiIq5czXlyaq-PytWLZFWAQVjiLnU44qsqwCyRLzpuVFkXW6PCPZ_06p0wdO_-lVoYBhB-ZMQWmk-YvwFwPuXsXp6SG__zZdIRBiUP0FqIU5vvYtDQN14H2wBQxfDP1exhDIcSqRRyd-JsSJALOBmF50IpIm7PWaxCRlqcOE_ZFqsWjZp4cD5ZcsRgBWTIuEyxyR9iNpgGY4CPz8pFpYMmuoJMmtV58SkK6UyUefTCwOEErDnHm1LN4phgONzdAltwFwdzZkS9lkOdZuL8tECyADk3R58iA8PUpXeA8LOPP7FQ9rXuC5yzP5FzcGFis5nhUYdyuX3KgPwNnAfwop9O-oMcKgi0o3_hd6IUy0yxUJL13wCXW8C1d2QpS-c-UJzeh_N-nZAcwIeS8RbKSredSsbo9JRuy4hPL3NuuXO5Zjjb9p4G2QQSIQpH288ijUCc0ru6ivF0Tsgf2XbtKGQqR7dQR8Po2eRbUk_bK4H3bdS8NB7Mkwg4gdKRPXMU-PGrjJ4AGgRpbXJUnWPqcr9b9xscCpb4A3vNmUMueDyyYQ-3zc3DZCshwQhFDOsjF6dAjpn16aI3uw-Lc5pXl4sRIZCNnaUqkNvVMChBltnqH9mc3Og_NUmb-QhJ1w7Y6HoLeBBn2GLv4jlhZp9TxeRaG7DSAnBNdcQuff1wwVhp7ly9-qyftxI7zcycM0HAhF8G3HhtNR5y2LOXbiuasKI4IUcdXxnpNoNlw==|1705932718|KW4UhW_8BSUmERjoL3VazcecnhSx8QIMQzVr04Y9j48=; Path=/; Expires=Mon, 29 Jan 2024 14:11:58 GMT;",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://{{hostname}}:4180/getTaskResult?taskId={{taskId}}",
+					"protocol": "http",
+					"host": [
+						"{{hostname}}"
+					],
+					"port": "4180",
+					"path": [
+						"getTaskResult"
+					],
+					"query": [
+						{
+							"key": "taskId",
+							"value": "{{taskId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getSystemStatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"\r",
+							"pm.test(\"Response status code is 200\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response has the required fields - data, number_of_workers, and status\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData).to.have.property('data');\r",
+							"    pm.expect(responseData).to.have.property('number_of_workers');\r",
+							"    pm.expect(responseData).to.have.property('status');\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Data is an array with at least one element\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"\r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData.data).to.be.an('array').and.to.have.lengthOf.at.least(1);\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Number_of_workers is a non-empty string\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseData.number_of_workers).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Status is a non-empty string\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData.status).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Status should be a non-empty string\");\r",
+							"});\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "_oauth2_proxy=6w3Jd174V77505d7R1gt33b95S4F-uCFWc_gz1edNDJwKT0_4IlnJoFulQ3aKTX3rd1SsZhysR1lO7xb3r1YZ1UbQIBKN6PVy1xelKIAf1RWaYPiOVfE2sdDQ6OgJP9jgvTEELtjZ4nbh7GYvyzmIPXTgbEgCG9MajgaB5obdY8zuhoBUIzhrP5j3b8DKQ0ixHdRa6Zs0U-gZIir22AqBZVsWKgqfd6Yhr5gvuzFKK280AQXv6d_hG0C9t8TDo6gaH6PcFlU4fRZdo2ms4i-DrtP9YagCG5yCJujahTLJ1gwBL1o2rPvBen_HMwBCOp5cxiVHk3egf2tu_1n3plKfDBjxZirZmDU3j84ss6m-yiu3XCl7VxNk3ZVSwWIYA5H8o9yZ39E1Q1AcTh3GF3Z0aC3uYKQjXlaotlwexdWIfwyk3qGuonVqDEKVyEmP0Nq3Z618gAa9ivNFiXzlsARSRQB3uuC4So9tuUwaEWUI74Lo76Y8Y_JiSLmFcWaK64gl9qCNiR4zdjaUOwzJkjTsrCNDoM5cs4LbOc0SsXpaJ2m0EKAJY3rXQ3qWDui8kmrSW_mq3Fq9Y3sFSArMi5njmXR9a4BzObxA6qeAfXT3Rv-JOu90C9ivv6i1SpUWuqL1eySNSsUG0-8dcHjeIFpzgEitkcxfRRcUdp64u6wdTwSII9Ae257ZHlJkKfgMRU8XdOpJOhE65Q6zJqQUu953RIe7aFHQHwT4kLSEblhGkyjAkvvsxXT__ApnvP0Zys2x04ChWubhDPzKqrkF2rTlwb-5P_MjUFWn7WJK9XaMCylzQy5XIsqVesBulCeD_-0Cs4FXgAVncny2a4AkeoWmGEi1VC1hvDSrjUg2F_V55VAiSPa6tdZ2WFG-5F8EyBYYxTEYCx9fak9Ru5gapVr17ujEzljmxOS5AFSqjjmci880owfZMT3b1Mfq2DnJR9dbBPyHvODSgBiRPiQqBe-YlXSlcNWiIq5czXlyaq-PytWLZFWAQVjiLnU44qsqwCyRLzpuVFkXW6PCPZ_06p0wdO_-lVoYBhB-ZMQWmk-YvwFwPuXsXp6SG__zZdIRBiUP0FqIU5vvYtDQN14H2wBQxfDP1exhDIcSqRRyd-JsSJALOBmF50IpIm7PWaxCRlqcOE_ZFqsWjZp4cD5ZcsRgBWTIuEyxyR9iNpgGY4CPz8pFpYMmuoJMmtV58SkK6UyUefTCwOEErDnHm1LN4phgONzdAltwFwdzZkS9lkOdZuL8tECyADk3R58iA8PUpXeA8LOPP7FQ9rXuC5yzP5FzcGFis5nhUYdyuX3KgPwNnAfwop9O-oMcKgi0o3_hd6IUy0yxUJL13wCXW8C1d2QpS-c-UJzeh_N-nZAcwIeS8RbKSredSsbo9JRuy4hPL3NuuXO5Zjjb9p4G2QQSIQpH288ijUCc0ru6ivF0Tsgf2XbtKGQqR7dQR8Po2eRbUk_bK4H3bdS8NB7Mkwg4gdKRPXMU-PGrjJ4AGgRpbXJUnWPqcr9b9xscCpb4A3vNmUMueDyyYQ-3zc3DZCshwQhFDOsjF6dAjpn16aI3uw-Lc5pXl4sRIZCNnaUqkNvVMChBltnqH9mc3Og_NUmb-QhJ1w7Y6HoLeBBn2GLv4jlhZp9TxeRaG7DSAnBNdcQuff1wwVhp7ly9-qyftxI7zcycM0HAhF8G3HhtNR5y2LOXbiuasKI4IUcdXxnpNoNlw==|1705932718|KW4UhW_8BSUmERjoL3VazcecnhSx8QIMQzVr04Y9j48=; Path=/; Expires=Mon, 29 Jan 2024 14:11:58 GMT;",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://{{hostname}}:4180/getSystemStatus",
+					"protocol": "http",
+					"host": [
+						"{{hostname}}"
+					],
+					"port": "4180",
+					"path": [
+						"getSystemStatus"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getTaskStatus",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"\r",
+							"pm.test(\"Response status code is 200\", function () {\r",
+							"  pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response has the required content type - application/json\", function () {\r",
+							"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Data field is present in the response\", function () {\r",
+							"  const responseData = pm.response.json();\r",
+							"  \r",
+							"  pm.expect(responseData).to.have.property('data');\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Data field should not be empty\", function () {\r",
+							"  const responseData = pm.response.json();\r",
+							"  pm.expect(responseData.data).to.exist.and.to.not.be.empty;\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Data field should be a string\", function () {\r",
+							"  const responseData = pm.response.json();\r",
+							"  \r",
+							"  pm.expect(responseData).to.be.an('object');\r",
+							"  pm.expect(responseData.data).to.be.a('string');\r",
+							"});\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "_oauth2_proxy=6w3Jd174V77505d7R1gt33b95S4F-uCFWc_gz1edNDJwKT0_4IlnJoFulQ3aKTX3rd1SsZhysR1lO7xb3r1YZ1UbQIBKN6PVy1xelKIAf1RWaYPiOVfE2sdDQ6OgJP9jgvTEELtjZ4nbh7GYvyzmIPXTgbEgCG9MajgaB5obdY8zuhoBUIzhrP5j3b8DKQ0ixHdRa6Zs0U-gZIir22AqBZVsWKgqfd6Yhr5gvuzFKK280AQXv6d_hG0C9t8TDo6gaH6PcFlU4fRZdo2ms4i-DrtP9YagCG5yCJujahTLJ1gwBL1o2rPvBen_HMwBCOp5cxiVHk3egf2tu_1n3plKfDBjxZirZmDU3j84ss6m-yiu3XCl7VxNk3ZVSwWIYA5H8o9yZ39E1Q1AcTh3GF3Z0aC3uYKQjXlaotlwexdWIfwyk3qGuonVqDEKVyEmP0Nq3Z618gAa9ivNFiXzlsARSRQB3uuC4So9tuUwaEWUI74Lo76Y8Y_JiSLmFcWaK64gl9qCNiR4zdjaUOwzJkjTsrCNDoM5cs4LbOc0SsXpaJ2m0EKAJY3rXQ3qWDui8kmrSW_mq3Fq9Y3sFSArMi5njmXR9a4BzObxA6qeAfXT3Rv-JOu90C9ivv6i1SpUWuqL1eySNSsUG0-8dcHjeIFpzgEitkcxfRRcUdp64u6wdTwSII9Ae257ZHlJkKfgMRU8XdOpJOhE65Q6zJqQUu953RIe7aFHQHwT4kLSEblhGkyjAkvvsxXT__ApnvP0Zys2x04ChWubhDPzKqrkF2rTlwb-5P_MjUFWn7WJK9XaMCylzQy5XIsqVesBulCeD_-0Cs4FXgAVncny2a4AkeoWmGEi1VC1hvDSrjUg2F_V55VAiSPa6tdZ2WFG-5F8EyBYYxTEYCx9fak9Ru5gapVr17ujEzljmxOS5AFSqjjmci880owfZMT3b1Mfq2DnJR9dbBPyHvODSgBiRPiQqBe-YlXSlcNWiIq5czXlyaq-PytWLZFWAQVjiLnU44qsqwCyRLzpuVFkXW6PCPZ_06p0wdO_-lVoYBhB-ZMQWmk-YvwFwPuXsXp6SG__zZdIRBiUP0FqIU5vvYtDQN14H2wBQxfDP1exhDIcSqRRyd-JsSJALOBmF50IpIm7PWaxCRlqcOE_ZFqsWjZp4cD5ZcsRgBWTIuEyxyR9iNpgGY4CPz8pFpYMmuoJMmtV58SkK6UyUefTCwOEErDnHm1LN4phgONzdAltwFwdzZkS9lkOdZuL8tECyADk3R58iA8PUpXeA8LOPP7FQ9rXuC5yzP5FzcGFis5nhUYdyuX3KgPwNnAfwop9O-oMcKgi0o3_hd6IUy0yxUJL13wCXW8C1d2QpS-c-UJzeh_N-nZAcwIeS8RbKSredSsbo9JRuy4hPL3NuuXO5Zjjb9p4G2QQSIQpH288ijUCc0ru6ivF0Tsgf2XbtKGQqR7dQR8Po2eRbUk_bK4H3bdS8NB7Mkwg4gdKRPXMU-PGrjJ4AGgRpbXJUnWPqcr9b9xscCpb4A3vNmUMueDyyYQ-3zc3DZCshwQhFDOsjF6dAjpn16aI3uw-Lc5pXl4sRIZCNnaUqkNvVMChBltnqH9mc3Og_NUmb-QhJ1w7Y6HoLeBBn2GLv4jlhZp9TxeRaG7DSAnBNdcQuff1wwVhp7ly9-qyftxI7zcycM0HAhF8G3HhtNR5y2LOXbiuasKI4IUcdXxnpNoNlw==|1705932718|KW4UhW_8BSUmERjoL3VazcecnhSx8QIMQzVr04Y9j48=; Path=/; Expires=Mon, 29 Jan 2024 14:11:58 GMT;",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://{{hostname}}:4180/getTaskStatus?taskId={{taskId}}",
+					"protocol": "http",
+					"host": [
+						"{{hostname}}"
+					],
+					"port": "4180",
+					"path": [
+						"getTaskStatus"
+					],
+					"query": [
+						{
+							"key": "taskId",
+							"value": "{{taskId}}"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getAllTasks",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"\r",
+							"pm.test(\"Response status code is 200\", function () {\r",
+							"    pm.expect(pm.response.code).to.equal(200);\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response has the required Content-Type header with value application/json\", function () {\r",
+							"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Data array is present in the response\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"    \r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData.data).to.exist;\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Data array should not be empty\", function () {\r",
+							"  const responseData = pm.response.json();\r",
+							"\r",
+							"  pm.expect(responseData).to.be.an('object');\r",
+							"  pm.expect(responseData.data).to.be.an('array').and.to.have.lengthOf.at.least(1, \"Data array should not be empty\");\r",
+							"});\r",
+							"\r",
+							"\r",
+							"pm.test(\"Data array elements are non-empty strings\", function () {\r",
+							"    const responseData = pm.response.json();\r",
+							"\r",
+							"    pm.expect(responseData).to.be.an('object');\r",
+							"    pm.expect(responseData.data).to.be.an('array');\r",
+							"    responseData.data.forEach(function(element) {\r",
+							"        pm.expect(element).to.be.a('string').and.to.have.lengthOf.at.least(1, \"Value should not be empty\");\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "_oauth2_proxy=6w3Jd174V77505d7R1gt33b95S4F-uCFWc_gz1edNDJwKT0_4IlnJoFulQ3aKTX3rd1SsZhysR1lO7xb3r1YZ1UbQIBKN6PVy1xelKIAf1RWaYPiOVfE2sdDQ6OgJP9jgvTEELtjZ4nbh7GYvyzmIPXTgbEgCG9MajgaB5obdY8zuhoBUIzhrP5j3b8DKQ0ixHdRa6Zs0U-gZIir22AqBZVsWKgqfd6Yhr5gvuzFKK280AQXv6d_hG0C9t8TDo6gaH6PcFlU4fRZdo2ms4i-DrtP9YagCG5yCJujahTLJ1gwBL1o2rPvBen_HMwBCOp5cxiVHk3egf2tu_1n3plKfDBjxZirZmDU3j84ss6m-yiu3XCl7VxNk3ZVSwWIYA5H8o9yZ39E1Q1AcTh3GF3Z0aC3uYKQjXlaotlwexdWIfwyk3qGuonVqDEKVyEmP0Nq3Z618gAa9ivNFiXzlsARSRQB3uuC4So9tuUwaEWUI74Lo76Y8Y_JiSLmFcWaK64gl9qCNiR4zdjaUOwzJkjTsrCNDoM5cs4LbOc0SsXpaJ2m0EKAJY3rXQ3qWDui8kmrSW_mq3Fq9Y3sFSArMi5njmXR9a4BzObxA6qeAfXT3Rv-JOu90C9ivv6i1SpUWuqL1eySNSsUG0-8dcHjeIFpzgEitkcxfRRcUdp64u6wdTwSII9Ae257ZHlJkKfgMRU8XdOpJOhE65Q6zJqQUu953RIe7aFHQHwT4kLSEblhGkyjAkvvsxXT__ApnvP0Zys2x04ChWubhDPzKqrkF2rTlwb-5P_MjUFWn7WJK9XaMCylzQy5XIsqVesBulCeD_-0Cs4FXgAVncny2a4AkeoWmGEi1VC1hvDSrjUg2F_V55VAiSPa6tdZ2WFG-5F8EyBYYxTEYCx9fak9Ru5gapVr17ujEzljmxOS5AFSqjjmci880owfZMT3b1Mfq2DnJR9dbBPyHvODSgBiRPiQqBe-YlXSlcNWiIq5czXlyaq-PytWLZFWAQVjiLnU44qsqwCyRLzpuVFkXW6PCPZ_06p0wdO_-lVoYBhB-ZMQWmk-YvwFwPuXsXp6SG__zZdIRBiUP0FqIU5vvYtDQN14H2wBQxfDP1exhDIcSqRRyd-JsSJALOBmF50IpIm7PWaxCRlqcOE_ZFqsWjZp4cD5ZcsRgBWTIuEyxyR9iNpgGY4CPz8pFpYMmuoJMmtV58SkK6UyUefTCwOEErDnHm1LN4phgONzdAltwFwdzZkS9lkOdZuL8tECyADk3R58iA8PUpXeA8LOPP7FQ9rXuC5yzP5FzcGFis5nhUYdyuX3KgPwNnAfwop9O-oMcKgi0o3_hd6IUy0yxUJL13wCXW8C1d2QpS-c-UJzeh_N-nZAcwIeS8RbKSredSsbo9JRuy4hPL3NuuXO5Zjjb9p4G2QQSIQpH288ijUCc0ru6ivF0Tsgf2XbtKGQqR7dQR8Po2eRbUk_bK4H3bdS8NB7Mkwg4gdKRPXMU-PGrjJ4AGgRpbXJUnWPqcr9b9xscCpb4A3vNmUMueDyyYQ-3zc3DZCshwQhFDOsjF6dAjpn16aI3uw-Lc5pXl4sRIZCNnaUqkNvVMChBltnqH9mc3Og_NUmb-QhJ1w7Y6HoLeBBn2GLv4jlhZp9TxeRaG7DSAnBNdcQuff1wwVhp7ly9-qyftxI7zcycM0HAhF8G3HhtNR5y2LOXbiuasKI4IUcdXxnpNoNlw==|1705932718|KW4UhW_8BSUmERjoL3VazcecnhSx8QIMQzVr04Y9j48=; Path=/; Expires=Mon, 29 Jan 2024 14:11:58 GMT;",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://{{hostname}}:4180/getAllTasks",
+					"protocol": "http",
+					"host": [
+						"{{hostname}}"
+					],
+					"port": "4180",
+					"path": [
+						"getAllTasks"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "hostname",
+			"value": "localhost"
+		}
+	]
+}
