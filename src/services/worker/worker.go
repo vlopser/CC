@@ -1,6 +1,7 @@
 package main
 
 import (
+	store "cc/src/pkg/lib/StoreManager"
 	. "cc/src/pkg/lib/TaskManager"
 	"cc/src/services/worker/utils"
 	"context"
@@ -44,10 +45,6 @@ func execCommand(root_dir string, stdout_file *os.File, stderr_file *os.File, co
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", command_with_args)
 
-	// cmd.SysProcAttr = &syscall.SysProcAttr{
-	// 	GidMappings: "grupo_sin_permisos",
-	// }
-
 	cmd.Stdout = stdout_file
 	cmd.Stderr = stderr_file
 
@@ -73,10 +70,6 @@ func executeTask(t task.Task) error {
 	defer stderr_file.Close()
 
 	err := execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go mod download")
-	// if err != nil {  // Quizás no puede hacer go mod download porque no hay .mod, dejemos que go run decida si puede ejecutarse
-	// 	return err
-	// }
-
 	err = execCommand(task_dir+task.REPO_DIR, stdout_file, stderr_file, "go run main.go", t.Parameters...)
 	if err != nil {
 		return err
@@ -87,6 +80,8 @@ func executeTask(t task.Task) error {
 
 func handleRequest(t task.Task, nats_server *nats.Conn) {
 	log.Println("Request", t.TaskId.String(), "received!")
+
+	store.SetInOutMsgs(nats_server, store.OUT_MSGS)
 
 	err := utils.CreateTaskDirectory(t.TaskId.String())
 	if err != nil {

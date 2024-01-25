@@ -1,55 +1,20 @@
 package main
 
 import (
-	"encoding/json"
+	storemanager "cc/src/pkg/lib/StoreManager"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"os"
-	"time"
-
 	"github.com/nats-io/nats.go"
+	"log"
+	"os"
+	"strconv"
+	"time"
 )
 
 var count int
-var lowerLimit = 200
-var upperLimit = 1000
+var limit = 10
 var workers = 1
-
-// ******* Accstatz Data structur *************
-type body struct {
-	ServerId     string         `json:"server_id"`
-	Now          time.Time      `json:"now"`
-	AccountStatz []accountStatz `json:"account_statz"`
-}
-
-type sentReceived struct {
-	Msgs  int `json:"msgs"`
-	Bytes int `json:"bytes"`
-}
-
-type accountStatz struct {
-	Acc              string       `json:"acc"`
-	Conns            int          `json:"conns"`
-	Leafnodes        int          `json:"leafnodes"`
-	TotalConns       int          `json:"total_conns"`
-	NumSubscriptions int          `json:"num_subscriptions"`
-	Sent             sentReceived `json:"sent"`
-	Received         sentReceived `json:"received"`
-	SlowConsumers    int          `json:"slow_consumers"`
-}
-
-//******* Accstatz Data structur *************
-
-// ******* Jsz Data structur *************
-type jsz struct {
-	Streams int `json:"streams"`
-}
-
-// ******* Jsz Data structur *************
-
-var running = false
+var natsServer *nats.Conn
+var congestionated = false
 
 func scheduledThread() {
 	ticker1 := time.NewTicker(time.Second * 5)
@@ -62,90 +27,84 @@ func scheduledThread() {
 }
 
 func checkQueue() {
-	endpoint := "http://localhost:8222/accstatz"
-	response, err := http.Post(endpoint, "application/json", nil)
+	inMsgs, outMsgs, err := storemanager.GetInOutMsgs(natsServer)
 	if err != nil {
-		log.Printf("Error connecting to endpoint %s", endpoint)
-	}
-	var msg body
-	bodyText, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Println("Error reading JSON:", err)
+		log.Println("An error occurred getting in/out msgs from observer KV", err.Error())
+		return
+	} else if "" == inMsgs || "" == outMsgs {
 		return
 	}
-	err = json.Unmarshal(bodyText, &msg)
-	if err != nil {
-		log.Println("Error when unmarshalling JSON:", err)
-		return
-	}
-	log.Println("Response is:\n", msg)
 
-	totalMsgs := msg.AccountStatz[0].Sent.Msgs + msg.AccountStatz[0].Received.Msgs - count
-	decidedNumberOfWorkers(totalMsgs)
+	in, err := strconv.Atoi(inMsgs)
+	if err != nil {
+		log.Println("Unexpected error:", err.Error())
+		return
+	}
+	out, err := strconv.Atoi(outMsgs)
+	if err != nil {
+		log.Println("Unexpected error:", err.Error())
+		return
+	}
+
+	log.Printf("Input messages: %d", in)
+	log.Printf("Output messages: %d", out)
+
+	difference := in - out
+	key, event := decideNumberOfWorkers(difference)
+	err = storemanager.SetSystemStatus(natsServer, congestionated, workers)
+	if err != nil {
+		log.Printf("Error creating event: %s %s", event, err.Error())
+	}
+	if "" == event || "" == key {
+		return
+	}
+	err = storemanager.CreateObserverEvent(natsServer, key, event)
+	if err != nil {
+		log.Printf("Error creating event: %s %s", event, err.Error())
+	}
 }
 
-func decidedNumberOfWorkers(totalMsgs int) {
-	if workers > 1 && totalMsgs < lowerLimit {
-		log.Printf("Received/sent messages : %d", totalMsgs)
-		log.Printf("Limit : %d", lowerLimit)
+func decideNumberOfWorkers(difference int) (string, string) {
+	if workers > 1 && difference < limit/3 {
+		currentTime := time.Now()
+		timeString := currentTime.Format("2006-01-02 15:04:05")
 		workers--
-		log.Printf("Reducing number of workers, n° workers : %d", workers)
-		upperLimit /= 2 * workers
-	} else if totalMsgs > upperLimit {
-		log.Println("Nats queue has exceeded current limit of sent/received messages")
-		log.Printf("Received/sent messages : %d", totalMsgs)
-		log.Printf("Limit : %d", upperLimit)
-		workers++
-		log.Printf("Adding new worker, n° workers : %d", workers)
-		upperLimit *= 2
+		aLog := fmt.Sprintf("%s Difference between sent and received message is %d. Reducing number of workers, n° workers : %d", timeString, difference, workers)
+		log.Printf(aLog)
+		congestionated = false
+		return currentTime.Format("150405"), aLog
+	} else if difference > limit {
+		if count == 3 {
+			currentTime := time.Now()
+			timeString := currentTime.Format("2006-01-02 15:04:05")
+			workers++
+			aLog := fmt.Sprintf("%s Nats queue has been busy for the last three times. The system is congestionated. Difference between sent and received message is %d. Adding new worker, n° workers : %d", timeString, difference, workers)
+			log.Printf(aLog)
+			count = 0
+			congestionated = true
+			return currentTime.Format("150405"), aLog
+		} else {
+			currentTime := time.Now()
+			timeString := currentTime.Format("2006-01-02 15:04:05")
+			aLog := fmt.Sprintf("%s Nats queue is busy, system is getting in congestion. Difference between sent and received message is %d", timeString, difference)
+			log.Println(aLog)
+			count++
+			return currentTime.Format("150405"), aLog
+		}
+	} else {
+		congestionated = false
+		return "", ""
 	}
-
-}
-
-func checkJsz() int {
-	endpoint := "http://localhost:8222/jsz"
-	response, err := http.Post(endpoint, "application/json", nil)
-	if err != nil {
-		log.Printf("Error connecting to endpoint %s", endpoint)
-	}
-	var msg jsz
-	bodyText, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Println("Error reading JSON:", err)
-		return -1
-	}
-	err = json.Unmarshal(bodyText, &msg)
-	if err != nil {
-		log.Println("Error when unmarshalling JSON:", err)
-		return -1
-	}
-	return msg.Streams
-}
-
-var numberOfWorksDoneBefore = 0
-
-const periodoTiempo = 5
-
-func averageRateOfService() {
-	//Hay que revisarlo, se debe restar uno pk no debemos tener en cuenta el stream KV__
-	numberOfWorksDoneAfter := checkJsz()
-	average := float64(numberOfWorksDoneAfter-numberOfWorksDoneBefore) / periodoTiempo
-	numberOfWorksDoneBefore = numberOfWorksDoneAfter
-	log.Println("La tasa promedio de servicio es: ", average)
-	time.Sleep(periodoTiempo * time.Second)
 }
 
 func main() {
-	nats_server, err := nats.Connect(os.Getenv("NATS_SERVER_ADDRESS")) //nats.DefaultURL
+	var err error
+	natsServer, err = nats.Connect(os.Getenv("NATS_SERVER_ADDRESS")) //nats.DefaultURL
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer nats_server.Close()
+	defer natsServer.Close()
 
-	//go scheduledThread()
-	for {
-		averageRateOfService()
-	}
+	scheduledThread()
 
-	fmt.Println("El número de trabajos realizados es", checkJsz())
 }

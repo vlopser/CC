@@ -54,5 +54,4 @@ func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.C
 	}
 
 	return nil
-
 }
