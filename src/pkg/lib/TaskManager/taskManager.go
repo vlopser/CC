@@ -7,14 +7,13 @@ import (
 	"cc/src/pkg/models/errors"
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
+	"github.com/google/uuid"
+	"github.com/nats-io/nats.go"
 	"cc/src/pkg/utils"
 	"log"
 	"os"
 	"path"
 	"strconv"
-
-	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
 
 	"cc/src/pkg/models/request"
 	"net/http"
@@ -222,7 +221,7 @@ func ReceiveTasks(nats_server *nats.Conn, handleFunc func(task.Task, *nats.Conn)
 	}
 }
 
-// Check PostTask request is valid
+// Check CreateTask request is valid
 func checkPostTask(context *gin.Context, nats_server *nats.Conn, requestBody *request.PostTaskBody) bool {
 	if err := context.ShouldBindJSON(&requestBody); err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{"error": "Request must have 'url' and 'parameters' parameters."})
@@ -267,7 +266,7 @@ func checkPostTask(context *gin.Context, nats_server *nats.Conn, requestBody *re
 	return true
 }
 
-func PostTask(context *gin.Context, nats_server *nats.Conn) {
+func CreateTask(context *gin.Context, nats_server *nats.Conn) {
 
 	var requestBody request.PostTaskBody
 	if !checkPostTask(context, nats_server, &requestBody) {
@@ -297,12 +296,13 @@ func PostTask(context *gin.Context, nats_server *nats.Conn) {
 	}
 
 	err = EnqueueTask(task, nats_server)
+	store.SetInOutMsgs(nats_server, store.IN_MSGS)
+
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, "An internal error happened.")
 		return
 	}
 
-	// todo llamar la libreria
 	context.JSON(http.StatusCreated, gin.H{"data": task.TaskId})
 }
 
@@ -329,4 +329,33 @@ func GetAllTasks(context *gin.Context, nats_server *nats.Conn) {
 	}
 
 	context.JSON(http.StatusOK, gin.H{"data": allTaskIds})
+}
+
+func GetSystemStatus(context *gin.Context, nats_server *nats.Conn) {
+
+	status, workers, err := store.GetSystemStatus(nats_server)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "An unexpected error has happened."})
+		return
+	}
+
+	logs, err := store.GetObserverLogs(nats_server)
+	switch err {
+	case nil:
+		break
+
+	case errors.ErrUserNotFound, errors.ErrTaskNotFound:
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Given task does not exist."})
+		return
+
+	case errors.ErrUserInvalid:
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "User ID is invalid."})
+		return
+
+	default:
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "An unexpected error has happened."})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"status": status, "number_of_workers": workers, "data": logs})
 }

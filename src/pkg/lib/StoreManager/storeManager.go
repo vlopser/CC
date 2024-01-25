@@ -15,7 +15,13 @@ import (
 )
 
 const (
-	TTL_TASK = 5 * time.Minute
+	TTL_TASK      = 5 * time.Minute
+	TTL_LOGS      = 24 * time.Hour
+	OBSERVER_KV   = "observer"
+	SYSTEM_STATUS = "system_status"
+	WORKERS       = "workers"
+	IN_MSGS       = "in_msgs"
+	OUT_MSGS      = "out_msgs"
 )
 
 func SetTaskStatus(nats_server *nats.Conn, idUser string, idTask string, status task.Status) error {
@@ -119,12 +125,20 @@ func GetUserTasksId(nats_server *nats.Conn, idUser string) ([]string, error) {
 		break
 
 	case nats.ErrBucketNotFound:
-		log.Println("User bucket does not exist:", err.Error())
-		return nil, errors.ErrUserNotFound
-
-	case nats.ErrInvalidBucketName:
-		log.Println("User ID is invalid:", err.Error())
-		return nil, errors.ErrUserInvalid
+		user_bucket, err = js.CreateKeyValue(&nats.KeyValueConfig{
+			Bucket: idUser,
+			TTL:    TTL_TASK,
+		})
+		switch err {
+		case nil:
+			break
+		case nats.ErrInvalidBucketName:
+			log.Println("User ID is invalid:", err.Error())
+			return nil, errors.ErrUserInvalid
+		default:
+			log.Println("Unexpected error:", err.Error())
+			return nil, err
+		}
 
 	default:
 		log.Println("Unexpected error:", err.Error())
@@ -178,7 +192,6 @@ func CreateTaskBucket(nats_server *nats.Conn, task_id string) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = js.CreateObjectStore(&nats.ObjectStoreConfig{
 		Bucket:   task_id,
 		TTL:      TTL_TASK, //Time until bucket is automatically deleted
@@ -239,4 +252,282 @@ func GetResult(nats_server *nats.Conn, taskId string) (*result.Result, error) {
 	}
 
 	return &res, nil
+}
+
+func CreateObserverEvent(nats_server *nats.Conn, key string, event string) error {
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return err
+	}
+
+	bucket, err := js.KeyValue(OBSERVER_KV)
+	switch err {
+	case nil:
+		break
+	case nats.ErrBucketNotFound:
+		log.Println("Observer bucket does not exist:", err.Error())
+		return errors.ErrUserNotFound
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+	_, err = bucket.Create(key, []byte(event))
+	switch err {
+	case nil:
+		break
+	case nats.ErrInvalidKey:
+		log.Println("Bucket key is invalid:", err.Error())
+		return errors.ErrTaskInvalid
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func GetObserverLogs(nats_server *nats.Conn) ([]string, error) {
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return nil, err
+	}
+	bucket, err := js.KeyValue(OBSERVER_KV)
+	switch err {
+	case nil:
+		break
+
+	case nats.ErrBucketNotFound:
+		log.Println("Observer bucket does not exist:", err.Error())
+		return nil, errors.ErrUserNotFound
+
+	case nats.ErrInvalidBucketName:
+		log.Println("Bucket name is invalid:", err.Error())
+		return nil, errors.ErrUserInvalid
+
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return nil, err
+	}
+
+	logs, err := bucket.ListKeys()
+	if err != nil {
+		log.Println("Unexpected error:", err.Error())
+		return nil, err
+	}
+
+	result := make([]string, 0)
+
+	for event := range logs.Keys() {
+		if event == WORKERS || event == SYSTEM_STATUS || event == IN_MSGS || event == OUT_MSGS {
+			continue
+		}
+		value, err := bucket.Get(event)
+		if err != nil {
+			log.Println(err.Error())
+		}
+		result = append(result, string(value.Value()))
+	}
+
+	return result, nil
+}
+
+func SetSystemStatus(natsServer *nats.Conn, congestionated bool, nWorkers int) error {
+	js, err := natsServer.JetStream()
+	if err != nil {
+		return err
+	}
+
+	bucket, err := js.KeyValue(OBSERVER_KV)
+	switch err {
+	case nil:
+		break
+	case nats.ErrBucketNotFound:
+		log.Println("Observer bucket does not exist:", err.Error())
+		return errors.ErrUserNotFound
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+
+	if congestionated {
+		_, err = bucket.Put(SYSTEM_STATUS, []byte("congestionated"))
+	} else {
+		_, err = bucket.Put(SYSTEM_STATUS, []byte("OK"))
+	}
+	switch err {
+	case nil:
+		break
+	case nats.ErrInvalidKey:
+		log.Println("Bucket key is invalid:", err.Error())
+		return errors.ErrTaskInvalid
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+
+	_, err = bucket.Put(WORKERS, []byte(strconv.Itoa(nWorkers)))
+	switch err {
+	case nil:
+		break
+	case nats.ErrInvalidKey:
+		log.Println("Bucket key is invalid:", err.Error())
+		return errors.ErrTaskInvalid
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+	return nil
+}
+
+func GetSystemStatus(nats_server *nats.Conn) (string, string, error) {
+
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return "", "", err
+	}
+	bucket, err := js.KeyValue(OBSERVER_KV)
+	switch err {
+	case nil:
+		break
+
+	case nats.ErrBucketNotFound:
+		log.Println("Observer bucket does not exist:", err.Error())
+		return "", "", errors.ErrUserNotFound
+
+	case nats.ErrInvalidBucketName:
+		log.Println("Bucket name is invalid:", err.Error())
+		return "", "", errors.ErrUserInvalid
+
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return "", "", err
+	}
+
+	status, err := bucket.Get(SYSTEM_STATUS)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	nWorkers, err := bucket.Get(WORKERS)
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return string(status.Value()), string(nWorkers.Value()), nil
+}
+
+func SetInOutMsgs(natsServer *nats.Conn, key string) error {
+	js, err := natsServer.JetStream()
+	if err != nil {
+		return err
+	}
+
+	bucket, err := js.KeyValue(OBSERVER_KV)
+	switch err {
+	case nil:
+		break
+	case nats.ErrBucketNotFound:
+		log.Println("Observer bucket does not exist:", err.Error())
+		return errors.ErrUserNotFound
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+
+	// get last number of sent/received message
+	value, err := bucket.Get(key)
+	switch err {
+	case nil:
+		break
+	case nats.ErrKeyNotFound:
+		_, err = bucket.Create(key, []byte(strconv.Itoa(0)))
+		if err != nil {
+			log.Println("Unexpected error:", err.Error())
+			return err
+		}
+		break
+	default:
+		log.Println("Error retrieving number of "+key, err.Error())
+		return err
+	}
+
+	inMsgs, err := strconv.Atoi(string(value.Value()))
+	if err != nil {
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+	_, err = bucket.Put(key, []byte(strconv.Itoa(inMsgs+1)))
+
+	switch err {
+	case nil:
+		break
+	case nats.ErrInvalidKey:
+		log.Println("Bucket key is invalid:", err.Error())
+		return errors.ErrTaskInvalid
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func GetInOutMsgs(natsServer *nats.Conn) (string, string, error) {
+	js, err := natsServer.JetStream()
+	if err != nil {
+		return "", "", err
+	}
+	bucket, err := js.KeyValue(OBSERVER_KV)
+	switch err {
+	case nil:
+		break
+
+	case nats.ErrBucketNotFound:
+		bucket, err = js.CreateKeyValue(&nats.KeyValueConfig{
+			Bucket: OBSERVER_KV,
+			TTL:    TTL_LOGS,
+		})
+		switch err {
+		case nil:
+			break
+		case nats.ErrInvalidBucketName:
+			log.Println("Bucket name is invalid:", err.Error())
+			return "", "", errors.ErrUserInvalid
+		default:
+			log.Println("Unexpected error:", err.Error())
+			return "", "", err
+		}
+	case nats.ErrInvalidBucketName:
+		log.Println("Bucket name is invalid:", err.Error())
+		return "", "", errors.ErrUserInvalid
+
+	default:
+		log.Println("Unexpected error:", err.Error())
+		return "", "", err
+	}
+
+	inMsgs, err := bucket.Get(IN_MSGS)
+	switch err {
+	case nil:
+		break
+	case nats.ErrKeyNotFound:
+		_, err = bucket.Create(IN_MSGS, []byte(strconv.Itoa(0)))
+		return "", "", err
+	default:
+		log.Println("Error retrieving number of "+IN_MSGS, err.Error())
+		return "", "", err
+	}
+
+	outMsgs, err := bucket.Get(OUT_MSGS)
+	switch err {
+	case nil:
+		break
+	case nats.ErrKeyNotFound:
+		_, err = bucket.Create(OUT_MSGS, []byte(strconv.Itoa(0)))
+		return "", "", err
+	default:
+		log.Println("Error retrieving number of "+OUT_MSGS, err.Error())
+		return "", "", err
+	}
+
+	return string(inMsgs.Value()), string(outMsgs.Value()), nil
 }

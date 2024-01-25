@@ -18,7 +18,7 @@ func EnqueueTask(task task.Task, nats_server *nats.Conn) error {
 
 	taskJSON, err := json.Marshal(task)
 	if err != nil {
-		log.Println("Error masrhaling task", task.TaskId, ":", err.Error())
+		log.Println("Error marshalling task", task.TaskId, ":", err.Error())
 		return err
 	}
 
@@ -54,5 +54,4 @@ func SubscribeQueueTask(nats_server *nats.Conn, callback func(task.Task, *nats.C
 	}
 
 	return nil
-
 }
