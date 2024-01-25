@@ -3,26 +3,25 @@ package utils
 import (
 	"archive/zip"
 	"cc/src/pkg/models/task"
-	"fmt"
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
 )
 
 func CreateTaskDirectory(task_id string) error {
+	log.Println("Creating task directory")
 
 	err := os.Mkdir(task_id, 0755)
 	if err != nil {
-		fmt.Println("Error al crear el directorio:", err)
 		return err
 	}
 
 	task_result_dir := task_id + task.RESULT_DIR
 	err = os.Mkdir(task_result_dir, 0755)
 	if err != nil {
-		fmt.Println("Error al crear el directorio:", err)
 		return err
 	}
 
@@ -49,9 +48,10 @@ func RemoveAllFiles(files []string) error {
 }
 
 func CreateErrorFile(task_id string, error_msg string) (string, error) {
+	log.Printf("Creating error file.\n")
+
 	file_errors, err := OpenFile(task_id + task.RESULT_DIR + task.ERROR_FILE)
 	if err != nil {
-		fmt.Println("Unable to open file in '", task_id+task.RESULT_DIR+task.ERROR_FILE, "':", err)
 		return "", err
 	}
 	defer file_errors.Close()
@@ -80,14 +80,11 @@ func OpenFile(file_path string) (*os.File, error) {
 }
 
 func CheckDirectoryExists(dir string) error {
-	// Verificar si el directorio existe
 	if _, err := os.Stat(dir + task.REPO_DIR); err == nil {
-		// Si el directorio existe, lo eliminamos
 		err := os.RemoveAll(dir + task.REPO_DIR)
 		if err != nil {
 			log.Println("Error removing directory:", err)
 			return err
-			// return err
 		}
 	}
 
@@ -95,16 +92,36 @@ func CheckDirectoryExists(dir string) error {
 }
 
 func CloneRepo(repo_url string, task_dir string) error {
+	log.Printf("Cloning repo '%s' to dir '%s'.\n", repo_url, task_dir)
 
-	//git.Plain cant clone if dir already exists, so delete it if so
+	//git.Plain cant clone if dir already exists, delete it if so
 	CheckDirectoryExists(task_dir + task.REPO_DIR)
 
 	_, err := git.PlainClone(task_dir+task.REPO_DIR, false, &git.CloneOptions{
-		URL:      repo_url,
-		Progress: os.Stdout,
+		URL: repo_url,
 	})
 	if err != nil {
-		fmt.Println("Error doing git clone:", err)
+		return err
+	}
+
+	changePermissionsDir(task_dir, os.FileMode(0755))
+	return nil
+}
+
+func changePermissionsDir(dir string, perm os.FileMode) error {
+	err := os.Chmod(dir, perm)
+	if err != nil {
+		return err
+	}
+
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		return os.Chmod(path, perm)
+	})
+
+	if err != nil {
 		return err
 	}
 

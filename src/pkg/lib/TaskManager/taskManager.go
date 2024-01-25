@@ -115,20 +115,16 @@ func SetTaskStatusToPending(nats_server *nats.Conn, t task.Task) error {
 /************************ TASK RESULTS ************************/
 
 func CreateTaskResult(nats_server *nats.Conn, result result.Result) error {
+	log.Printf("Creating task result.\n")
 
 	bucket := result.TaskId.String()
 	err := store.CreateTaskBucket(nats_server, bucket)
 	if err != nil {
-		log.Println("Error when creating the bucket", result.TaskId.String(), ":", err)
 		return err
 	}
 
 	for _, file := range result.Files {
-		err = store.StoreFileInBucket(nats_server, file, path.Base(file), bucket)
-		// if err != nil {
-		// 	log.Println("Error when storing the file", file, ":", err)
-		// 	return
-		// }
+		store.StoreFileInBucket(nats_server, file, path.Base(file), bucket)
 	}
 
 	return nil
