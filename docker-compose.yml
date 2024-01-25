@@ -12,11 +12,9 @@ services:
       context: docker/frontend/
       dockerfile: Dockerfile
     image: frontend:latest
-    # ports:
-    #   - "8080:8080"
     environment:
       NATS_SERVER_ADDRESS: nats://nats-server:4222
-      MAX_REQUESTS_PER_CLIENT: 10
+      MAX_REQUESTS_PER_CLIENT: 50
     depends_on:
       - debian-base
       - nats-server
@@ -33,14 +31,23 @@ services:
       - debian-base
       - nats-server
 
+  debian-observer:
+    build:
+      context: docker/observer
+      dockerfile: Dockerfile
+    image: observer:latest
+    environment:
+      NATS_SERVER_ADDRESS: nats://nats-server:4222
+    depends_on:
+      - debian-base
+      - nats-server
+
   nats-server:
     image: nats:latest
     ports:
       - "4222:4222"
       - "8222:8222"
-    command: "--jetstream -m 8222" #Configurarlo mejor con un .conf
-    # volumes:
-    #   - ./nats-config.conf:/etc/nats-server/nats-server.conf
+    command: "--jetstream -m 8222"
 
   oauth2-proxy:
     ports:
