@@ -16,20 +16,12 @@ func CreateTaskDirectory(task_id string) error {
 
 	err := os.Mkdir(task_id, 0755)
 	if err != nil {
-<<<<<<< HEAD:src/services/worker/utils/storage.go
-		fmt.Println("Error creating directory:", err)
-=======
->>>>>>> main:src/pkg/utils/storage.go
 		return err
 	}
 
 	task_result_dir := task_id + task.RESULT_DIR
 	err = os.Mkdir(task_result_dir, 0755)
 	if err != nil {
-<<<<<<< HEAD:src/services/worker/utils/storage.go
-		fmt.Println("Error creating directory:", err)
-=======
->>>>>>> main:src/pkg/utils/storage.go
 		return err
 	}
 
