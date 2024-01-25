@@ -27,6 +27,7 @@ services:
     image: worker:latest
     environment:
       NATS_SERVER_ADDRESS: nats://nats-server:4222
+      MAX_SECONDS_EXECUTION_PER_REQUEST: 20
     depends_on:
       - debian-base
       - nats-server

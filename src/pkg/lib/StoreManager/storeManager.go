@@ -114,7 +114,7 @@ func GetTaskStatus(nats_server *nats.Conn, idTask string, idUser string) (*task.
 
 }
 
-func GetUserTasks(nats_server *nats.Conn, idUser string) ([]string, error) {
+func GetUserTasksId(nats_server *nats.Conn, idUser string) ([]string, error) {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return nil, err
@@ -246,8 +246,9 @@ func GetResult(nats_server *nats.Conn, taskId string) (*result.Result, error) {
 
 	files_in_bucket, _ := task_bucket.List()
 	for _, file := range files_in_bucket {
-		task_bucket.GetFile(file.Name, "frontend_"+file.Name)
-		res.Files = append(res.Files, file.Name)
+		res_filename := res.TaskId.String() + "_" + file.Name
+		task_bucket.GetFile(file.Name, res_filename)
+		res.Files = append(res.Files, res_filename)
 	}
 
 	return &res, nil
