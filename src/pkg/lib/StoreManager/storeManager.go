@@ -161,6 +161,25 @@ func GetUserTasksId(nats_server *nats.Conn, idUser string) ([]string, error) {
 
 }
 
+func StoreStringInBucket(nats_server *nats.Conn, content string, file_name string, bucket_name string) error {
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return err
+	}
+
+	bucket, err := js.ObjectStore(bucket_name)
+	if err != nil {
+		return err
+	}
+
+	bucket.PutString(file_name, content)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func StoreFileInBucket(nats_server *nats.Conn, file_path string, file_name string, bucket_name string) error {
 	js, err := nats_server.JetStream()
 	if err != nil {
@@ -172,7 +191,7 @@ func StoreFileInBucket(nats_server *nats.Conn, file_path string, file_name strin
 		return err
 	}
 
-	// We override behaviout of PutFile so we can choose arguments as filename
+	// We override behaviour of PutFile so we can choose arguments as filename
 	f, err := os.Open(file_path)
 	if err != nil {
 		return err
@@ -530,4 +549,21 @@ func GetInOutMsgs(natsServer *nats.Conn) (string, string, error) {
 	}
 
 	return string(inMsgs.Value()), string(outMsgs.Value()), nil
+}
+
+func CreateInjectorBucket(nats_server *nats.Conn, bucket_name string) error {
+	js, err := nats_server.JetStream()
+	if err != nil {
+		return err
+	}
+	_, err = js.CreateObjectStore(&nats.ObjectStoreConfig{
+		Bucket: bucket_name,
+		// MaxBytes: 10000,    //Unlimited memory
+	})
+	if err != nil {
+		log.Println("Unexpected error:", err.Error())
+		return err
+	}
+
+	return nil
 }

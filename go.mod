@@ -1,12 +1,12 @@
 module cc
 
-go 1.21.5
+go 1.21.6
 
 require (
 	github.com/gin-contrib/cors v1.5.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-git/go-git/v5 v5.11.0
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/nats-io/nats.go v1.32.0
 )
 

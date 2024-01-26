@@ -1,6 +1,7 @@
 package main
 
 import (
+	. "cc/src/pkg/lib/InjectionManager"
 	. "cc/src/pkg/lib/TaskManager"
 	"log"
 	"os"
@@ -29,13 +30,15 @@ func main() {
 	//Para obtener los datos
 	router.GET("/getTaskResult", func(ctx *gin.Context) { GetTaskResult(ctx, nats_server) })
 	//Para agregar datos
-	router.POST("/createTask", func(ctx *gin.Context) { CreateTask(ctx, nats_server) })
+	router.POST("/createTask", func(ctx *gin.Context) { PostTask(ctx, nats_server) })
 
 	router.GET("/getTaskStatus", func(ctx *gin.Context) { GetTaskStatus(ctx, nats_server) })
 
 	router.GET("/getAllTasks", func(ctx *gin.Context) { GetAllTasks(ctx, nats_server) })
 
 	router.GET("/getSystemStatus", func(ctx *gin.Context) { GetSystemStatus(ctx, nats_server) })
+
+	router.POST("/injectFile", func(ctx *gin.Context) { PostInjection(ctx, nats_server) })
 	//Ejecutar el servidor
 	router.Run("0.0.0.0:8080")
 }
