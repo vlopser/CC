@@ -7,13 +7,15 @@ import (
 	"cc/src/pkg/models/errors"
 	"cc/src/pkg/models/result"
 	"cc/src/pkg/models/task"
-	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
 	"cc/src/pkg/utils"
 	"log"
 	"os"
 	"path"
 	"strconv"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/nats-io/nats.go"
 
 	"cc/src/pkg/models/request"
 	"net/http"
@@ -266,7 +268,7 @@ func checkPostTask(context *gin.Context, nats_server *nats.Conn, requestBody *re
 	return true
 }
 
-func CreateTask(context *gin.Context, nats_server *nats.Conn) {
+func PostTask(context *gin.Context, nats_server *nats.Conn) {
 
 	var requestBody request.PostTaskBody
 	if !checkPostTask(context, nats_server, &requestBody) {
@@ -332,6 +334,12 @@ func GetAllTasks(context *gin.Context, nats_server *nats.Conn) {
 }
 
 func GetSystemStatus(context *gin.Context, nats_server *nats.Conn) {
+
+	requester_mail := context.Request.Header.Get("X-Forwarded-Email")
+	if !strings.Contains(os.Getenv("ADMIN_USERS"), requester_mail) {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "Only admin users are allowed to inject files."})
+		return
+	}
 
 	status, workers, err := store.GetSystemStatus(nats_server)
 	if err != nil {

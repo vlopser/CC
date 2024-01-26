@@ -15,6 +15,7 @@ services:
     environment:
       NATS_SERVER_ADDRESS: nats://nats-server:4222
       MAX_REQUESTS_PER_CLIENT: 50
+      ADMIN_USERS: alex3galvez@gmail.com joseserranodiaz96@gmail.com
     depends_on:
       - debian-base
       - nats-server
@@ -37,6 +38,17 @@ services:
       context: docker/observer
       dockerfile: Dockerfile
     image: observer:latest
+    environment:
+      NATS_SERVER_ADDRESS: nats://nats-server:4222
+    depends_on:
+      - debian-base
+      - nats-server
+
+  debian-injector:
+    build:
+      context: docker/injector
+      dockerfile: Dockerfile
+    image: injector:latest
     environment:
       NATS_SERVER_ADDRESS: nats://nats-server:4222
     depends_on:
