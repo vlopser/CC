@@ -350,7 +350,7 @@ func GetObserverLogs(nats_server *nats.Conn) ([]string, error) {
 	return result, nil
 }
 
-func SetSystemStatus(natsServer *nats.Conn, congestionated bool, nWorkers int) error {
+func SetSystemStatus(natsServer *nats.Conn, congested bool, nWorkers int) error {
 	js, err := natsServer.JetStream()
 	if err != nil {
 		return err
@@ -368,8 +368,8 @@ func SetSystemStatus(natsServer *nats.Conn, congestionated bool, nWorkers int) e
 		return err
 	}
 
-	if congestionated {
-		_, err = bucket.Put(SYSTEM_STATUS, []byte("congestionated"))
+	if congested {
+		_, err = bucket.Put(SYSTEM_STATUS, []byte("congested"))
 	} else {
 		_, err = bucket.Put(SYSTEM_STATUS, []byte("OK"))
 	}
