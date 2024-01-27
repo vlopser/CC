@@ -55,9 +55,6 @@ func checkQueue() {
 	if err != nil {
 		log.Printf("Error creating event: %s %s", event, err.Error())
 	}
-	if "" == event || "" == key {
-		return
-	}
 	err = storemanager.CreateObserverEvent(natsServer, key, event)
 	if err != nil {
 		log.Printf("Error creating event: %s %s", event, err.Error())

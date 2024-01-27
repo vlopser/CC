@@ -1,0 +1,7 @@
+.idea/
+.vscode/
+
+docker/frontend/frontend
+docker/worker/worker
+docker/observer/observer
+docker/injector/injector
