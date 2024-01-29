@@ -12,7 +12,7 @@ import (
 
 var count int
 var limit = 10
-var workers = 1
+var workers = 3
 var natsServer *nats.Conn
 var congested = false
 
@@ -64,7 +64,7 @@ func checkQueue() {
 }
 
 func decideNumberOfWorkers(difference int) (string, string) {
-	if workers > 1 && difference < limit/3 {
+	if workers > 3 && difference < limit/3 {
 		currentTime := time.Now()
 		timeString := currentTime.Format("2006-01-02 15:04:05")
 		workers--

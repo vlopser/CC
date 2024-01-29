@@ -337,7 +337,7 @@ func GetSystemStatus(context *gin.Context, nats_server *nats.Conn) {
 
 	requester_mail := context.Request.Header.Get("X-Forwarded-Email")
 	if !strings.Contains(os.Getenv("ADMIN_USERS"), requester_mail) {
-		context.JSON(http.StatusUnauthorized, gin.H{"error": "Only admin users are allowed to inject files."})
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "Only admin users are allowed get system status."})
 		return
 	}
 

@@ -14,8 +14,8 @@ services:
     image: frontend:latest
     environment:
       NATS_SERVER_ADDRESS: nats://nats-server:4222
-      MAX_REQUESTS_PER_CLIENT: 50
-      ADMIN_USERS: alex3galvez@gmail.com joseserranodiaz96@gmail.com victorialservera@gmail.com
+      MAX_REQUESTS_PER_CLIENT: 80
+      ADMIN_USERS: alex3galvez@gmail.com joseserranodiaz96@gmail.com victorialservera@gmail.com mianolucap@gmail.com
     depends_on:
       - debian-base
       - nats-server
