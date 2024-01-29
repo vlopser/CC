@@ -45,7 +45,7 @@ func PostInjection(context *gin.Context, nats_server *nats.Conn) {
 	queuemanager.EnqueueInjectionRequest(
 		requestInjection.RequestInjection{
 			File_name:    header.Filename,
-			File_content: string(content),
+			File_content: content,
 		}, nats_server)
 
 	// for key, values := range context.Request.Header {

@@ -30,7 +30,7 @@ func waitForInjectionRequests(nats_server *nats.Conn, wg *sync.WaitGroup) {
 func handleRequest(nats_server *nats.Conn, req requestInjection.RequestInjection) {
 	loop := true
 	for loop {
-		err := storemanager.StoreStringInBucket(nats_server, req.File_content, req.File_name, INJECTOR_BUCKET)
+		err := storemanager.StoreBytesInBucket(nats_server, req.File_content, req.File_name, INJECTOR_BUCKET)
 		switch err {
 		case nil:
 			log.Println("File successfully injected")

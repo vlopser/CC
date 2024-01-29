@@ -12,3 +12,8 @@ up: build
 
 down:
 	docker-compose down
+	
+	rm docker/frontend/frontend
+	rm docker/worker/worker
+	rm docker/observer/observer
+	rm docker/injector/injector

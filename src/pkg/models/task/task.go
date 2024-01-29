@@ -36,7 +36,6 @@ type Task struct {
 	UserId     string
 	RepoUrl    string   `json:"repoUrl"`
 	Parameters []string `json:"parameters"`
-	Input      string   //cambiar a RepoUrl
 	Status     Status   `json:"status"`
 }
 

@@ -26,6 +26,9 @@ services:
       context: docker/worker
       dockerfile: Dockerfile
     image: worker:latest
+    deploy:
+      mode: "replicated"
+      replicas: 3
     environment:
       NATS_SERVER_ADDRESS: nats://nats-server:4222
       MAX_SECONDS_EXECUTION_PER_REQUEST: 20

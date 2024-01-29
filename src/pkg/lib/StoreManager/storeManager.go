@@ -161,7 +161,7 @@ func GetUserTasksId(nats_server *nats.Conn, idUser string) ([]string, error) {
 
 }
 
-func StoreStringInBucket(nats_server *nats.Conn, content string, file_name string, bucket_name string) error {
+func StoreBytesInBucket(nats_server *nats.Conn, content []byte, file_name string, bucket_name string) error {
 	js, err := nats_server.JetStream()
 	if err != nil {
 		return err
@@ -172,7 +172,7 @@ func StoreStringInBucket(nats_server *nats.Conn, content string, file_name strin
 		return err
 	}
 
-	bucket.PutString(file_name, content)
+	bucket.PutBytes(file_name, content)
 	if err != nil {
 		return err
 	}
